@@ -59,9 +59,9 @@ export const PARTS: Part[] = [
 
   // Injectors
   { id: "inj-stock", slot: "injectors", name: "OEM 290cc", description: "Factory injectors sized for the stock engine.", price: 0, flowCc: 290 },
-  { id: "inj-440", slot: "injectors", name: "440cc High-Impedance", description: "Supports a mild turbo build.", price: 520 },
-  { id: "inj-750", slot: "injectors", name: "750cc", description: "Room for serious boost.", price: 880, unlockAfter: "c2" },
-  { id: "inj-1000", slot: "injectors", name: "1000cc Motorsport", description: "Massive flow. Idle quality suffers, power does not.", price: 1250, unlockAfter: "c3" },
+  { id: "inj-440", slot: "injectors", name: "440cc High-Impedance", description: "Supports a mild turbo build.", price: 520, flowCc: 440 },
+  { id: "inj-750", slot: "injectors", name: "750cc", description: "Room for serious boost.", price: 880, flowCc: 750, unlockAfter: "c2" },
+  { id: "inj-1000", slot: "injectors", name: "1000cc Motorsport", description: "Massive flow. Idle quality suffers, power does not.", price: 1250, flowCc: 1000, unlockAfter: "c3" },
 
   // Exhaust
   { id: "exh-stock", slot: "exhaust", name: "OEM Exhaust", description: "Two catalysts and two silencers.", price: 0, flowCapacity: 0.2, spoolAssist: 0 },
@@ -74,12 +74,6 @@ export const PARTS: Part[] = [
   { id: "ecu-standalone", slot: "ecu", name: "Standalone ECU", description: "Full control of every map.", price: 1800, maxBoostTarget: 2.2, timingRange: 6, afrRange: [10.8, 14.7], revLimitRange: [6000, 8200], unlockAfter: "c2" },
 ] as Part[];
 
-// Fill injector flow for entries declared without the field above.
-for (const p of PARTS) {
-  if (p.slot === "injectors" && !(p as { flowCc?: number }).flowCc) {
-    (p as { flowCc: number }).flowCc = Number(p.id.split("-")[1]);
-  }
-}
 
 const BY_ID = new Map(PARTS.map((p) => [p.id, p]));
 
