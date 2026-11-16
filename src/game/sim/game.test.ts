@@ -11,7 +11,7 @@ const ch = (id: string) => CHALLENGES.find((c) => c.id === id)!;
 const SOLUTIONS: Record<string, { build: Partial<Build>; tune: Partial<Tune> }> = {
   c1: { build: { intake: "intake-cai", exhaust: "exh-catback" }, tune: {} },
   c2: { build: { intake: "intake-hf", camshaft: "cam-street", exhaust: "exh-catback", ecu: "ecu-piggy" }, tune: { afrTarget: 12.8, timingOffset: 3 } },
-  c3: { build: { intake: "intake-hf", turbo: "turbo-t25", intercooler: "ic-small", injectors: "inj-440", exhaust: "exh-catback", ecu: "ecu-piggy" }, tune: { boostTarget: 1.1, afrTarget: 12.2 } },
+  c3: { build: { intake: "intake-hf", turbo: "turbo-t25", intercooler: "ic-small", injectors: "inj-440", exhaust: "exh-catback", ecu: "ecu-piggy" }, tune: { boostTarget: 1.1, afrTarget: 11.8 } },
   c4: { build: { intake: "intake-hf", turbo: "turbo-t25", intercooler: "ic-large", injectors: "inj-440", ecu: "ecu-piggy" }, tune: { boostTarget: 1.1, afrTarget: 12.2, timingOffset: 2 } },
   c5: { build: { intake: "intake-hf", camshaft: "cam-race", turbo: "turbo-t45", intercooler: "ic-large", injectors: "inj-750", exhaust: "exh-3in", ecu: "ecu-standalone" }, tune: { boostTarget: 0.9, afrTarget: 12.2, timingOffset: 4, revLimit: 8000 } },
 };
