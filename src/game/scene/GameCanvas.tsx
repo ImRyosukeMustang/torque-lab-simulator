@@ -44,7 +44,7 @@ export function GameCanvas() {
   return (
     <div ref={wrap} className="absolute inset-0">
       <Canvas
-        shadows
+        shadows="percentage"
         dpr={[1, 2]}
         camera={{ position: VIEWS.exterior.camera, fov: 38, near: 0.05, far: 80 }}
         gl={{ antialias: true }}

@@ -238,8 +238,8 @@ export function Coupe({ children }: { children?: React.ReactNode }) {
       {/* lights */}
       {[-1, 1].map((s) => (
         <group key={s}>
-          <mesh position={[2.16, 0.7, s * 0.6]} rotation-y={s * -0.3} rotation-z={-0.35}>
-            <boxGeometry args={[0.14, 0.04, 0.34]} />
+          <mesh position={[2.185, 0.675, s * 0.56]} rotation-y={s * -0.18}>
+            <boxGeometry args={[0.06, 0.045, 0.34]} />
             <meshStandardMaterial color="#e8eef2" emissive="#dfe8ee" emissiveIntensity={0.6} roughness={0.1} />
           </mesh>
           {/* mirrors */}
