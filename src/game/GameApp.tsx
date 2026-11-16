@@ -34,7 +34,7 @@ export function GameApp() {
           {loaded && (tab === "workshop" ? <WorkshopPanel /> : tab === "dyno" ? <DynoPanel /> : <CareerPanel />)}
         </aside>
       </main>
-      <Toaster position="bottom-left" />
+      <Toaster position="top-center" theme="dark" />
     </div>
   );
 }

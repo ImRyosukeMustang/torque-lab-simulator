@@ -124,8 +124,8 @@ export function evaluateChallenge(ch: Challenge, build: Build, result: SimResult
     const turbo = getPart("turbo", build.turbo).maximumFlow > 0;
     checks.push({
       label: "Aspiration",
-      target: c.aspiration === "na" ? "Naturally aspirated" : "Turbocharged",
-      actual: turbo ? "Turbocharged" : "Naturally aspirated",
+      target: c.aspiration === "na" ? "NA only" : "Turbo",
+      actual: turbo ? "Turbo" : "NA",
       pass: c.aspiration === "turbo" ? turbo : !turbo,
     });
   }
@@ -158,6 +158,6 @@ export function describeRequirements(ch: Challenge): { label: string; target: st
   if (c.minPeakHp !== undefined) out.push({ label: "Peak power", target: `≥ ${c.minPeakHp} hp` });
   if (c.minTorqueAt) out.push({ label: `Torque @ ${c.minTorqueAt.rpm} rpm`, target: `≥ ${c.minTorqueAt.nm} Nm` });
   if (c.maxEgtC !== undefined) out.push({ label: "Peak EGT", target: `≤ ${c.maxEgtC}°C` });
-  if (c.aspiration) out.push({ label: "Aspiration", target: c.aspiration === "na" ? "Naturally aspirated" : "Turbocharged" });
+  if (c.aspiration) out.push({ label: "Aspiration", target: c.aspiration === "na" ? "NA only" : "Turbo" });
   return out;
 }
