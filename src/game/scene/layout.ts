@@ -2,7 +2,7 @@
 import type { SlotId } from "../sim/types";
 
 export const SCENE_COLORS = {
-  paint: "#b8461e",
+  paint: "#9e3b1a",
   trim: "#15171a",
   rubber: "#1b1c1e",
   rim: "#9ea3a8",

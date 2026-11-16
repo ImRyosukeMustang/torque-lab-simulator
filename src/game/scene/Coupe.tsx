@@ -137,7 +137,7 @@ function Wheel({ position, side, spinRef }: { position: [number, number, number]
             <meshStandardMaterial color={C.rim} metalness={0.85} roughness={0.28} />
           </mesh>
         ))}
-        <mesh rotation-x={Math.PI / 2} position-z={side * 0.09}>
+        <mesh position-z={side * 0.09}>
           <torusGeometry args={[0.225, 0.014, 10, 48]} />
           <meshStandardMaterial color={C.rim} metalness={0.85} roughness={0.28} />
         </mesh>
@@ -232,14 +232,14 @@ export function Coupe({ children }: { children?: React.ReactNode }) {
       {[0.48, 0.53, 0.58].map((y) => (
         <mesh key={y} position={[2.17, y, 0]}>
           <boxGeometry args={[0.02, 0.012, 1.24]} />
-          <meshStandardMaterial color={C.trim} metalness={0.4} roughness={0.5} />
+          <meshStandardMaterial color={C.trim} metalness={0} roughness={0.8} />
         </mesh>
       ))}
       {/* lights */}
       {[-1, 1].map((s) => (
         <group key={s}>
-          <mesh position={[2.12, 0.69, s * 0.64]} rotation-y={s * -0.25}>
-            <boxGeometry args={[0.12, 0.045, 0.3]} />
+          <mesh position={[2.16, 0.7, s * 0.6]} rotation-y={s * -0.3} rotation-z={-0.35}>
+            <boxGeometry args={[0.14, 0.04, 0.34]} />
             <meshStandardMaterial color="#e8eef2" emissive="#dfe8ee" emissiveIntensity={0.6} roughness={0.1} />
           </mesh>
           {/* mirrors */}

@@ -19,7 +19,7 @@ function concreteTexture() {
   c.width = c.height = size;
   const g = c.getContext("2d")!;
   const r = rng(7);
-  g.fillStyle = "#5a5c5f";
+  g.fillStyle = "#47494c";
   g.fillRect(0, 0, size, size);
   for (let i = 0; i < 26000; i++) {
     const v = 70 + r() * 50;
@@ -158,7 +158,7 @@ export function Workshop() {
       ] as const).map(([x, z, w, d], i) => (
         <mesh key={i} position={[x, 0.003, z]} rotation-x={-Math.PI / 2}>
           <planeGeometry args={[w, d]} />
-          <meshStandardMaterial color="#c08a1a" roughness={0.8} />
+          <meshStandardMaterial color="#8a6418" roughness={0.9} />
         </mesh>
       ))}
       <mesh position={[0, 3, -7]} receiveShadow>
