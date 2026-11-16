@@ -24,7 +24,7 @@ export type Vec3 = [number, number, number];
 export const SLOT_FOCUS: Record<SlotId, { target: Vec3; camera: Vec3 }> = {
   intake: { target: [1.5, 0.66, -0.38], camera: [2.5, 2.0, -1.4] },
   camshaft: { target: [1.02, 0.82, 0], camera: [1.9, 2.1, 0.8] },
-  turbo: { target: [1.08, 0.7, 0.42], camera: [1.0, 2.15, 1.3] },
+  turbo: { target: [1.08, 0.7, 0.42], camera: [1.05, 2.35, 1.15] },
   intercooler: { target: [1.95, 0.52, 0], camera: [3.4, 1.15, 0.9] },
   injectors: { target: [1.02, 0.84, -0.14], camera: [1.6, 2.05, -1.0] },
   exhaust: { target: [0.98, 0.6, 0.34], camera: [0.75, 2.1, 1.3] },
