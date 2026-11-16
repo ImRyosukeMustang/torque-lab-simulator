@@ -3,7 +3,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { CHALLENGES, evaluateChallenge, isChallengeUnlocked, type Grade } from "../sim/challenges";
+import { CHALLENGES, describeRequirements, evaluateChallenge, isChallengeUnlocked, type Grade } from "../sim/challenges";
 import { configKey } from "../sim/economy";
 import { useGame } from "../store";
 import { fmtCredits } from "./format";
@@ -69,7 +69,7 @@ export function CareerPanel() {
                     <span>{ev ? "Last dyno run" : "Not measured"}</span>
                   </div>
                   <ul className="space-y-1">
-                    {(ev?.checks ?? evaluateChallenge(ch, game.build, { ...(lastResult ?? ({} as never)), curve: lastResult?.curve ?? [{ rpm: 0 } as never] } as never).checks).map((c) => (
+                    {(ev?.checks ?? describeRequirements(ch).map((r) => ({ ...r, actual: "", pass: false }))).map((c) => (
                       <li key={c.label} className="flex items-center justify-between gap-2 font-mono text-xs tabular">
                         <span className="flex items-center gap-1.5">
                           {ev ? c.pass ? <Check className="h-3.5 w-3.5 text-success" /> : <X className="h-3.5 w-3.5 text-destructive" /> : <span className="h-3.5 w-3.5" />}

@@ -146,3 +146,17 @@ export function isChallengeUnlocked(ch: Challenge, progress: Record<string, Grad
   const idx = CHALLENGES.findIndex((c) => c.id === ch.id);
   return idx === 0 || Boolean(progress[CHALLENGES[idx - 1].id]);
 }
+
+/** Requirement labels and targets, for display before a build has been measured. */
+export function describeRequirements(ch: Challenge): { label: string; target: string }[] {
+  const c = ch.constraints;
+  const out = [
+    { label: "Build cost", target: `≤ ${c.maxBudget.toLocaleString("en-US")} cr` },
+    { label: "Reliability", target: `≥ ${c.minReliability}%` },
+  ];
+  if (c.minPeakHp !== undefined) out.push({ label: "Peak power", target: `≥ ${c.minPeakHp} hp` });
+  if (c.minTorqueAt) out.push({ label: `Torque @ ${c.minTorqueAt.rpm} rpm`, target: `≥ ${c.minTorqueAt.nm} Nm` });
+  if (c.maxEgtC !== undefined) out.push({ label: "Peak EGT", target: `≤ ${c.maxEgtC}°C` });
+  if (c.aspiration) out.push({ label: "Aspiration", target: c.aspiration === "na" ? "Naturally aspirated" : "Turbocharged" });
+  return out;
+}
