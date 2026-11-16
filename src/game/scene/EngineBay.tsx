@@ -139,7 +139,7 @@ function IntakeSystem({ turbo }: { turbo: boolean }) {
   const pipeR = hf ? 0.042 : 0.034;
   const filterPos: [number, number, number] = [1.66, 0.6, -0.47];
   const toThrottle: [number, number, number][] = [[1.66, 0.6, -0.4], [1.6, 0.72, -0.34], [1.48, 0.78, -0.32], [1.42, 0.78, -0.32]];
-  const toTurbo: [number, number, number][] = [[1.62, 0.6, -0.36], [1.52, 0.74, -0.14], [1.46, 0.74, 0.2], [1.3, 0.66, 0.42], [1.2, 0.62, 0.43]];
+  const toTurbo: [number, number, number][] = [[1.62, 0.6, -0.36], [1.54, 0.8, -0.14], [1.48, 0.82, 0.2], [1.36, 0.74, 0.43], [1.26, 0.72, 0.44]];
   return (
     <SlotGroup slot="intake">
       {intake === "intake-stock" ? (
@@ -208,7 +208,7 @@ function ExhaustAndTurbo({ turbo }: { turbo: string }) {
   const hasTurbo = turbo !== "turbo-none";
   const scale = turbo === "turbo-t25" ? 1.05 : turbo === "turbo-t35" ? 1.3 : 1.6;
   const primaryR = exhaust === "exh-3in" ? 0.021 : 0.018;
-  const collector: [number, number, number] = [1.02, 0.52, 0.36];
+  const collector: [number, number, number] = hasTurbo ? [1.02, 0.62, 0.38] : [1.02, 0.52, 0.36];
   const downR = exhaust === "exh-3in" ? 0.04 : exhaust === "exh-catback" ? 0.033 : 0.03;
 
   return (
@@ -218,7 +218,7 @@ function ExhaustAndTurbo({ turbo }: { turbo: string }) {
           <Tube key={x} points={[[x, 0.66, 0.17], [x, 0.64, 0.27], [(x + collector[0]) / 2, 0.57, 0.34], collector]} radius={primaryR} color={C.steel} metal={0.85} rough={0.35} heat />
         ))}
         <Tube
-          points={hasTurbo ? [[0.93, 0.56, 0.42], [0.82, 0.48, 0.44], [0.75, 0.36, 0.36], [0.7, 0.26, 0.2]] : [collector, [0.94, 0.42, 0.36], [0.8, 0.3, 0.3], [0.68, 0.24, 0.2]]}
+          points={hasTurbo ? [[0.95, 0.72, 0.45], [0.82, 0.66, 0.47], [0.74, 0.42, 0.4], [0.7, 0.26, 0.2]] : [collector, [0.94, 0.42, 0.36], [0.8, 0.3, 0.3], [0.68, 0.24, 0.2]]}
           radius={downR}
           color={C.steel}
           metal={0.85}
@@ -228,7 +228,7 @@ function ExhaustAndTurbo({ turbo }: { turbo: string }) {
       </SlotGroup>
       {hasTurbo && (
         <SlotGroup slot="turbo">
-          <group position={[1.03, 0.6, 0.43]} scale={scale}>
+          <group position={[1.03, 0.72, 0.44]} scale={scale}>
             {/* turbine housing */}
             <mesh rotation-y={Math.PI / 2} castShadow>
               <torusGeometry args={[0.06, 0.035, 16, 32]} />
@@ -282,11 +282,11 @@ function Intercooler({ turbo }: { turbo: boolean }) {
               <meshStandardMaterial color={C.aluminium} metalness={0.85} roughness={0.3} />
             </mesh>
           ))}
-          <Tube points={[[-0.02, 0.02, w / 2 + 0.03], [-0.3, 0.12, 0.6], [-0.7, 0.12, 0.5], [-0.82, 0.07, 0.46]]} radius={0.032} color={C.aluminium} metal={0.85} rough={0.3} />
+          <Tube points={[[-0.02, 0.02, w / 2 + 0.03], [-0.3, 0.12, 0.6], [-0.7, 0.12, 0.5], [-0.8, 0.27, 0.46]]} radius={0.032} color={C.aluminium} metal={0.85} rough={0.3} />
           <Tube points={[[-0.02, 0.02, -w / 2 - 0.03], [-0.3, 0.18, -0.58], [-0.5, 0.26, -0.36], [-0.57, 0.26, -0.31]]} radius={0.032} color={C.aluminium} metal={0.85} rough={0.3} />
         </group>
       ) : (
-        <Tube points={[[1.2, 0.63, 0.46], [1.5, 0.7, 0.3], [1.55, 0.8, -0.1], [1.45, 0.79, -0.31], [1.42, 0.79, -0.31]]} radius={0.03} color={C.hose} metal={0.1} rough={0.8} />
+        <Tube points={[[1.18, 0.8, 0.46], [1.5, 0.84, 0.3], [1.55, 0.8, -0.1], [1.45, 0.79, -0.31], [1.42, 0.79, -0.31]]} radius={0.03} color={C.hose} metal={0.1} rough={0.8} />
       )}
     </SlotGroup>
   );
