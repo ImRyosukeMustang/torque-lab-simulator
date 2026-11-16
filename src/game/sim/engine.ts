@@ -127,16 +127,16 @@ function simulatePoint(build: Build, tune: Tune, rpm: number): PointState {
 
   // Knock margin (>0 safe). Driven by manifold pressure, charge temp, advance and mixture.
   const knockIndex =
-    0.55 * boostActual + (chargeK - 308) / 45 + 0.13 * tune.timingOffset + 0.22 * (afr - 12.0);
+    0.45 * boostActual + (chargeK - 315) / 80 + 0.11 * tune.timingOffset + 0.2 * (afr - 12.5);
   const knockMargin = 1 - knockIndex;
 
   // Combustion and losses
   const fuelEnergyW = (mdot / STOICH) * LHV * afrPowerFactor(afr);
-  let etaI = 0.4 * timingFactor(tune.timingOffset);
+  let etaI = 0.45 * timingFactor(tune.timingOffset);
   if (knockMargin < 0) etaI *= 1 - Math.min(0.15, -knockMargin * 0.12);
   const indicatedW = fuelEnergyW * etaI;
   const k = rpm / 1000;
-  const fmepBar = 0.6 + 0.09 * k + 0.022 * k * k;
+  const fmepBar = 0.5 + 0.07 * k + 0.018 * k * k;
   const frictionW = fmepBar * 1e5 * vd * cycleRate;
   const brakeW = Math.max(0, indicatedW - frictionW);
   const bmepBar = brakeW / (vd * cycleRate) / 1e5;
@@ -144,7 +144,7 @@ function simulatePoint(build: Build, tune: Tune, rpm: number): PointState {
   const powerHp = brakeW / 745.7;
 
   const egtC =
-    560 + 18 * bmepBar + 55 * (afr - 12.5) - 14 * tune.timingOffset + 60 * (rpm / 7000) +
+    540 + 14 * bmepBar + 55 * (afr - 12.5) - 14 * tune.timingOffset + 60 * (rpm / 7000) +
     (knockMargin < 0 ? -knockMargin * 80 : 0);
 
   return {
@@ -201,11 +201,11 @@ export function simulate(build: Build, rawTune: Tune): SimResult {
   };
 
   // Internals stress
-  if (peakBmep > 18) hit((peakBmep - 18) * 1.5);
+  if (peakBmep > 21) hit((peakBmep - 21) * 1.5);
   if (peakBmep > ENGINE.internalsBmepLimit) {
     hit((peakBmep - ENGINE.internalsBmepLimit) * 6);
     diagnostics.push({ code: "BMEP_OVER", severity: "critical", message: `Cylinder pressure ${round(peakBmep)} bar BMEP exceeds the stock internals limit of ${ENGINE.internalsBmepLimit} bar.` });
-  } else if (peakBmep > 18) {
+  } else if (peakBmep > 21) {
     diagnostics.push({ code: "BMEP_HIGH", severity: "warning", message: `BMEP ${round(peakBmep)} bar is approaching the internals limit (${ENGINE.internalsBmepLimit} bar).` });
   }
 

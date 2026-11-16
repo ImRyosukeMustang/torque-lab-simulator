@@ -8,8 +8,8 @@ export const ENGINE: EngineSpec = {
   boreMm: 86,
   strokeMm: 86,
   compression: 9.5,
-  internalsBmepLimit: 21,
-  coolingCapacityKw: 215,
+  internalsBmepLimit: 24,
+  coolingCapacityKw: 260,
   idleRpm: 850,
 };
 
@@ -37,12 +37,12 @@ export const SLOT_HELP: Record<SlotId, string> = {
 
 export const PARTS: Part[] = [
   // Intake
-  { id: "intake-stock", slot: "intake", name: "OEM Airbox", description: "Quiet, paper-element airbox with a narrow snorkel.", price: 0, flowCapacity: 0.17 },
-  { id: "intake-cai", slot: "intake", name: "Cold Air Intake", description: "Shielded cone filter drawing from the bumper.", price: 450, flowCapacity: 0.26 },
-  { id: "intake-hf", slot: "intake", name: "High-Flow Intake + 70mm Throttle", description: "Large-bore pipework and an oversized throttle body.", price: 950, flowCapacity: 0.4 },
+  { id: "intake-stock", slot: "intake", name: "OEM Airbox", description: "Quiet, paper-element airbox with a narrow snorkel.", price: 0, flowCapacity: 0.14 },
+  { id: "intake-cai", slot: "intake", name: "Cold Air Intake", description: "Shielded cone filter drawing from the bumper.", price: 450, flowCapacity: 0.22 },
+  { id: "intake-hf", slot: "intake", name: "High-Flow Intake + 70mm Throttle", description: "Large-bore pipework and an oversized throttle body.", price: 950, flowCapacity: 0.36 },
 
   // Camshaft
-  { id: "cam-stock", slot: "camshaft", name: "OEM Cams", description: "Mild profile tuned for drivability.", price: 0, durationDeg: 228, liftMm: 9.2, peakVE: 0.92, peakRpm: 4600, spreadLow: 3400, spreadHigh: 3600, valvetrainLimit: 7200 },
+  { id: "cam-stock", slot: "camshaft", name: "OEM Cams", description: "Mild profile tuned for drivability.", price: 0, durationDeg: 228, liftMm: 9.2, peakVE: 0.95, peakRpm: 4800, spreadLow: 3400, spreadHigh: 3600, valvetrainLimit: 7200 },
   { id: "cam-street", slot: "camshaft", name: "Street Cams 256°", description: "More duration and lift; stronger mid-range and top end.", price: 1100, durationDeg: 256, liftMm: 10.4, peakVE: 0.99, peakRpm: 5400, spreadLow: 3100, spreadHigh: 3400, valvetrainLimit: 7600 },
   { id: "cam-race", slot: "camshaft", name: "Race Cams 272° + Springs", description: "High-RPM profile with uprated springs. Soft below 4000 rpm.", price: 2200, durationDeg: 272, liftMm: 11.5, peakVE: 1.05, peakRpm: 6300, spreadLow: 2700, spreadHigh: 3300, valvetrainLimit: 8200, unlockAfter: "c2" },
 
@@ -64,9 +64,9 @@ export const PARTS: Part[] = [
   { id: "inj-1000", slot: "injectors", name: "1000cc Motorsport", description: "Massive flow. Idle quality suffers, power does not.", price: 1250, flowCc: 1000, unlockAfter: "c3" },
 
   // Exhaust
-  { id: "exh-stock", slot: "exhaust", name: "OEM Exhaust", description: "Two catalysts and two silencers.", price: 0, flowCapacity: 0.2, spoolAssist: 0 },
-  { id: "exh-catback", slot: "exhaust", name: "Sport Cat-Back 2.5in", description: "Free-flowing rear section with a single silencer.", price: 700, flowCapacity: 0.3, spoolAssist: 0.03 },
-  { id: "exh-3in", slot: "exhaust", name: "3in Turbo-Back System", description: "Full 3-inch system with a high-flow cat.", price: 1350, flowCapacity: 0.46, spoolAssist: 0.08 },
+  { id: "exh-stock", slot: "exhaust", name: "OEM Exhaust", description: "Two catalysts and two silencers.", price: 0, flowCapacity: 0.17, spoolAssist: 0 },
+  { id: "exh-catback", slot: "exhaust", name: "Sport Cat-Back 2.5in", description: "Free-flowing rear section with a single silencer.", price: 700, flowCapacity: 0.26, spoolAssist: 0.03 },
+  { id: "exh-3in", slot: "exhaust", name: "3in Turbo-Back System", description: "Full 3-inch system with a high-flow cat.", price: 1350, flowCapacity: 0.42, spoolAssist: 0.08 },
 
   // ECU
   { id: "ecu-stock", slot: "ecu", name: "OEM ECU", description: "Locked factory map. Runs safe fuelling with mild boost control.", price: 0, maxBoostTarget: 0.5, timingRange: 0, afrRange: [12.5, 12.5], revLimitRange: [7000, 7000] },
