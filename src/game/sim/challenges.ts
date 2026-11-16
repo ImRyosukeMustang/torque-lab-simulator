@@ -35,7 +35,7 @@ export const CHALLENGES: Challenge[] = [
     brief: "The AM-20 breathes through a restrictive airbox and a quiet factory exhaust. Free up the airflow and prove the gain on the dyno, without forced induction.",
     skills: ["Airflow", "Intake restriction", "Dyno testing"],
     constraints: { maxBudget: 1800, minReliability: 95, minPeakHp: 160, aspiration: "na" },
-    metric: { kind: "peakHp", label: "Peak power", unit: "hp", silver: 163, gold: 166 },
+    metric: { kind: "peakHp", label: "Peak power", unit: "hp", silver: 165, gold: 170 },
     reward: { bronze: 1500, silver: 2200, gold: 3000 },
   },
   {
@@ -45,7 +45,7 @@ export const CHALLENGES: Challenge[] = [
     brief: "A client wants a sharper naturally aspirated engine that still pulls cleanly out of hairpins. Find top-end power without losing the low-end torque.",
     skills: ["Volumetric efficiency", "Valve timing", "Power band"],
     constraints: { maxBudget: 3500, minReliability: 90, minPeakHp: 180, minTorqueAt: { rpm: 3000, nm: 180 }, aspiration: "na" },
-    metric: { kind: "peakHp", label: "Peak power", unit: "hp", silver: 184, gold: 188 },
+    metric: { kind: "peakHp", label: "Peak power", unit: "hp", silver: 185, gold: 188 },
     reward: { bronze: 2500, silver: 3500, gold: 4500 },
   },
   {
@@ -55,7 +55,7 @@ export const CHALLENGES: Challenge[] = [
     brief: "Fit a turbocharger and make 250 hp. The turbo is only the start: the fuel system, the charge temperature and the tune all have to keep up.",
     skills: ["Forced induction", "Fuel delivery", "Charge cooling"],
     constraints: { maxBudget: 6000, minReliability: 85, minPeakHp: 250, aspiration: "turbo" },
-    metric: { kind: "peakHp", label: "Peak power", unit: "hp", silver: 262, gold: 272 },
+    metric: { kind: "peakHp", label: "Peak power", unit: "hp", silver: 270, gold: 285 },
     reward: { bronze: 4000, silver: 5500, gold: 7000 },
   },
   {
@@ -65,7 +65,7 @@ export const CHALLENGES: Challenge[] = [
     brief: "A rally-stage customer needs instant response out of tight corners. Deliver big torque at 3000 rpm and keep the engine durable for long stages.",
     skills: ["Turbo spool", "Boost curve", "Reliability"],
     constraints: { maxBudget: 7000, minReliability: 90, minTorqueAt: { rpm: 3000, nm: 320 } },
-    metric: { kind: "torqueAt", rpm: 3000, label: "Torque @ 3000 rpm", unit: "Nm", silver: 335, gold: 350 },
+    metric: { kind: "torqueAt", rpm: 3000, label: "Torque @ 3000 rpm", unit: "Nm", silver: 340, gold: 360 },
     reward: { bronze: 5000, silver: 6500, gold: 8000 },
   },
   {
@@ -75,7 +75,7 @@ export const CHALLENGES: Challenge[] = [
     brief: "The flagship build. Big power, but the engine must survive a 24-hour endurance programme: exhaust temperatures and stress have to stay in check.",
     skills: ["Complete optimisation", "Thermal management", "Cylinder pressure"],
     constraints: { maxBudget: 15000, minReliability: 80, minPeakHp: 360, maxEgtC: 940, aspiration: "turbo" },
-    metric: { kind: "peakHp", label: "Peak power", unit: "hp", silver: 380, gold: 400 },
+    metric: { kind: "peakHp", label: "Peak power", unit: "hp", silver: 385, gold: 400 },
     reward: { bronze: 8000, silver: 11000, gold: 15000 },
   },
 ];
