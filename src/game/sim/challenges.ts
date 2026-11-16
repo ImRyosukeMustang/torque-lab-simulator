@@ -34,7 +34,7 @@ export const CHALLENGES: Challenge[] = [
     title: "More Air, More Power",
     brief: "The AM-20 breathes through a restrictive airbox and a quiet factory exhaust. Free up the airflow and prove the gain on the dyno, without forced induction.",
     skills: ["Airflow", "Intake restriction", "Dyno testing"],
-    constraints: { maxBudget: 1500, minReliability: 95, minPeakHp: 160, aspiration: "na" },
+    constraints: { maxBudget: 1800, minReliability: 95, minPeakHp: 160, aspiration: "na" },
     metric: { kind: "peakHp", label: "Peak power", unit: "hp", silver: 163, gold: 166 },
     reward: { bronze: 1500, silver: 2200, gold: 3000 },
   },
