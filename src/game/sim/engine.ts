@@ -223,7 +223,7 @@ export function simulate(build: Build, rawTune: Tune): SimResult {
 
   // Knock
   if (minKnock < 0) {
-    hit(Math.min(45, 120 * -minKnock));
+    hit(Math.min(50, 10 + 150 * -minKnock));
     diagnostics.push({ code: "KNOCK", severity: "critical", slot: "ecu", message: "Detonation detected. Reduce boost or ignition advance, enrich the mixture or cool the charge." });
   } else if (minKnock < 0.08) {
     diagnostics.push({ code: "KNOCK_MARGIN", severity: "warning", slot: "ecu", message: "Knock margin is thin. Small changes in conditions could cause detonation." });

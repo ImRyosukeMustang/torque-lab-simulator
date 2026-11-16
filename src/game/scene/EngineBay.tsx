@@ -206,7 +206,7 @@ function ExhaustAndTurbo({ turbo }: { turbo: string }) {
     if (wheel.current && dynoLive.running) wheel.current.rotation.x += dynoLive.boostBar * 60 * Math.min(delta, 0.05);
   });
   const hasTurbo = turbo !== "turbo-none";
-  const scale = turbo === "turbo-t25" ? 0.8 : turbo === "turbo-t35" ? 1 : 1.25;
+  const scale = turbo === "turbo-t25" ? 1.05 : turbo === "turbo-t35" ? 1.3 : 1.6;
   const primaryR = exhaust === "exh-3in" ? 0.021 : 0.018;
   const collector: [number, number, number] = [1.02, 0.52, 0.36];
   const downR = exhaust === "exh-3in" ? 0.04 : exhaust === "exh-catback" ? 0.033 : 0.03;
@@ -228,7 +228,7 @@ function ExhaustAndTurbo({ turbo }: { turbo: string }) {
       </SlotGroup>
       {hasTurbo && (
         <SlotGroup slot="turbo">
-          <group position={[1.03, 0.58, 0.42]} scale={scale}>
+          <group position={[1.03, 0.6, 0.43]} scale={scale}>
             {/* turbine housing */}
             <mesh rotation-y={Math.PI / 2} castShadow>
               <torusGeometry args={[0.06, 0.035, 16, 32]} />
