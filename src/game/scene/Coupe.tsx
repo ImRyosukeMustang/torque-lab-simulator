@@ -110,7 +110,7 @@ function tireGeometry() {
   return g;
 }
 
-function Wheel({ position, side, spinRef }: { position: [number, number, number]; side: 1 | -1; spinRef?: React.RefObject<THREE.Group | null> }) {
+function Wheel({ position, side, spinRef }: { position: [number, number, number]; side: 1 | -1; spinRef?: React.RefObject<THREE.Group | null> | undefined }) {
   const tire = useMemo(tireGeometry, []);
   return (
     <group position={position}>
@@ -123,7 +123,7 @@ function Wheel({ position, side, spinRef }: { position: [number, number, number]
         <boxGeometry args={[0.13, 0.06, 0.07]} />
         <meshStandardMaterial color={C.caliper} metalness={0.3} roughness={0.45} />
       </mesh>
-      <group ref={spinRef}>
+      <group ref={spinRef ?? null}>
         <mesh geometry={tire} castShadow receiveShadow>
           <meshStandardMaterial color={C.rubber} roughness={0.92} />
         </mesh>

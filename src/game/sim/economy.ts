@@ -94,7 +94,8 @@ export function submitChallenge(state: GameState, challengeId: string): SubmitOu
   const ch = CHALLENGES.find((c) => c.id === challengeId);
   if (!ch) return { state, evaluation: null, reward: 0, refused: "locked" };
   const idx = CHALLENGES.indexOf(ch);
-  if (idx > 0 && !state.progress[CHALLENGES[idx - 1].id]) return { state, evaluation: null, reward: 0, refused: "locked" };
+  const prevCh = CHALLENGES[idx - 1];
+  if (idx > 0 && prevCh && !state.progress[prevCh.id]) return { state, evaluation: null, reward: 0, refused: "locked" };
   if (!state.lastRunKey) return { state, evaluation: null, reward: 0, refused: "no-run" };
   if (state.lastRunKey !== configKey(state.build, state.tune)) return { state, evaluation: null, reward: 0, refused: "stale-run" };
   const evaluation = evaluateChallenge(ch, state.build, simulate(state.build, state.tune));

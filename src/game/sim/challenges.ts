@@ -144,7 +144,8 @@ export function rewardFor(ch: Challenge, newGrade: Grade, previous: Grade | null
 
 export function isChallengeUnlocked(ch: Challenge, progress: Record<string, Grade | undefined>): boolean {
   const idx = CHALLENGES.findIndex((c) => c.id === ch.id);
-  return idx === 0 || Boolean(progress[CHALLENGES[idx - 1].id]);
+  const prev = CHALLENGES[idx - 1];
+  return idx <= 0 || !prev || Boolean(progress[prev.id]);
 }
 
 /** Requirement labels and targets, for display before a build has been measured. */

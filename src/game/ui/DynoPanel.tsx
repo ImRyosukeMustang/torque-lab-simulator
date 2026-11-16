@@ -6,7 +6,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { cn } from "@/lib/utils";
 import { dynoLive } from "../dynoLive";
 import { configKey } from "../sim/economy";
-import { LIMITS, sampleCurve, simulate } from "../sim/engine";
+import { lastPoint, LIMITS, sampleCurve, simulate } from "../sim/engine";
 import type { CurvePoint, SimResult } from "../sim/types";
 import { useGame } from "../store";
 import { TunePanel } from "./TunePanel";
@@ -29,12 +29,12 @@ function buildRows(curve: CurvePoint[], upTo: number, baseline: SimResult | null
   const rpms = new Set<number>();
   curve.forEach((p) => rpms.add(p.rpm));
   baseline?.curve.forEach((p) => rpms.add(p.rpm));
-  if (upTo < curve[curve.length - 1].rpm) rpms.add(Math.round(upTo));
+  if (upTo < lastPoint(curve).rpm) rpms.add(Math.round(upTo));
   return [...rpms]
     .sort((a, b) => a - b)
     .map((rpm) => {
       const row: ChartRow = { rpm };
-      if (rpm <= upTo && rpm <= curve[curve.length - 1].rpm) {
+      if (rpm <= upTo && rpm <= lastPoint(curve).rpm) {
         const p = sampleCurve(curve, rpm);
         row.hp = Math.round(p.powerHp * 10) / 10;
         row.nm = Math.round(p.torqueNm);
@@ -42,7 +42,7 @@ function buildRows(curve: CurvePoint[], upTo: number, baseline: SimResult | null
         row.afr = Math.round(p.afr * 10) / 10;
         row.egt = Math.round(p.egtC);
       }
-      if (baseline && rpm <= baseline.curve[baseline.curve.length - 1].rpm) {
+      if (baseline && rpm <= lastPoint(baseline.curve).rpm) {
         const b = sampleCurve(baseline.curve, rpm);
         row.baseHp = Math.round(b.powerHp * 10) / 10;
         row.baseNm = Math.round(b.torqueNm);
@@ -51,7 +51,7 @@ function buildRows(curve: CurvePoint[], upTo: number, baseline: SimResult | null
     });
 }
 
-function Readout({ label, value, unit, tone }: { label: string; value: string; unit: string; tone?: "warn" | "crit" }) {
+function Readout({ label, value, unit, tone }: { label: string; value: string; unit: string; tone?: "warn" | "crit" | undefined }) {
   return (
     <div className="rounded-md border border-border bg-card px-3 py-2">
       <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{label}</div>
@@ -113,7 +113,7 @@ export function DynoPanel() {
 
   const start = () => {
     const result = simulate(game.build, game.tune);
-    const end = result.curve[result.curve.length - 1].rpm;
+    const end = lastPoint(result.curve).rpm;
     const t0 = performance.now();
     let lastUi = 0;
     setRunning(true);
@@ -245,7 +245,7 @@ export function DynoPanel() {
           <div className="mb-3 grid grid-cols-3 gap-2 font-mono text-xs tabular">
             <div><span className="text-muted-foreground">Thermal load </span>{Math.round(shown.thermalLoad * 100)}%</div>
             <div><span className="text-muted-foreground">Build cost </span>{shown.buildCost.toLocaleString("en-US")} cr</div>
-            <div><span className="text-muted-foreground">Rev limit </span>{shown.curve[shown.curve.length - 1].rpm}</div>
+            <div><span className="text-muted-foreground">Rev limit </span>{lastPoint(shown.curve).rpm}</div>
           </div>
           <ul className="space-y-1.5">
             {shown.diagnostics.map((d) => {

@@ -17,7 +17,7 @@ export function CareerPanel() {
   const submit = useGame((s) => s.submit);
   const setTab = useGame((s) => s.setTab);
   const firstOpen = CHALLENGES.find((c) => !game.progress[c.id]) ?? CHALLENGES[0];
-  const [openId, setOpenId] = useState(firstOpen.id);
+  const [openId, setOpenId] = useState(firstOpen?.id ?? "c1");
   const fresh = Boolean(lastResult && game.lastRunKey === configKey(game.build, game.tune));
   const completed = Object.keys(game.progress).length;
 

@@ -22,7 +22,7 @@ describe("challenges", () => {
   for (const c of CHALLENGES) {
     it(`${c.id} fails on the stock car and passes with a known build`, () => {
       expect(evaluateChallenge(c, STOCK_BUILD, simulate(STOCK_BUILD, STOCK_TUNE)).passed).toBe(false);
-      const s = SOLUTIONS[c.id];
+      const s = SOLUTIONS[c.id]!;
       const b = { ...STOCK_BUILD, ...s.build };
       const ev = evaluateChallenge(c, b, simulate(b, { ...STOCK_TUNE, ...s.tune }));
       expect(ev.checks.filter((x) => !x.pass)).toEqual([]);

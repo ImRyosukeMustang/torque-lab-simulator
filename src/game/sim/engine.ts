@@ -300,20 +300,29 @@ export function simulate(build: Build, rawTune: Tune): SimResult {
   };
 }
 
+/** Last point of a (non-empty) curve. */
+export function lastPoint(curve: CurvePoint[]): CurvePoint {
+  const p = curve[curve.length - 1];
+  if (!p) throw new Error("Empty curve");
+  return p;
+}
+
 /** Linear interpolation of the curve at an RPM (for the live dyno sweep and challenge checks). */
 export function sampleCurve(curve: CurvePoint[], rpm: number): CurvePoint {
-  if (rpm <= curve[0].rpm) return curve[0];
+  const first = curve[0];
+  if (!first) throw new Error("Empty curve");
+  if (rpm <= first.rpm) return first;
   for (let i = 1; i < curve.length; i++) {
-    const b = curve[i];
+    const a = curve[i - 1]!;
+    const b = curve[i]!;
     if (rpm <= b.rpm) {
-      const a = curve[i - 1];
       const t = (rpm - a.rpm) / (b.rpm - a.rpm);
-      const out = { ...a };
+      const out: CurvePoint = { ...a };
       (Object.keys(a) as (keyof CurvePoint)[]).forEach((key) => {
         out[key] = a[key] + (b[key] - a[key]) * t;
       });
       return out;
     }
   }
-  return curve[curve.length - 1];
+  return lastPoint(curve);
 }

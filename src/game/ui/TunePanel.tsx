@@ -2,7 +2,7 @@ import { Slider } from "@/components/ui/slider";
 import { getPart } from "../sim/parts";
 import { useGame } from "../store";
 
-function Row({ label, value, unit, min, max, step, onChange, disabled, hint }: { label: string; value: number; unit: string; min: number; max: number; step: number; onChange: (v: number) => void; disabled?: boolean; hint?: string }) {
+function Row({ label, value, unit, min, max, step, onChange, disabled, hint }: { label: string; value: number; unit: string; min: number; max: number; step: number; onChange: (v: number) => void; disabled?: boolean | undefined; hint?: string }) {
   return (
     <div className="space-y-2">
       <div className="flex items-baseline justify-between">
@@ -13,7 +13,7 @@ function Row({ label, value, unit, min, max, step, onChange, disabled, hint }: {
           {unit}
         </span>
       </div>
-      <Slider value={[value]} min={min} max={max} step={step} disabled={disabled} onValueChange={([v]) => onChange(v)} aria-label={label} />
+      <Slider value={[value]} min={min} max={max} step={step} disabled={Boolean(disabled)} onValueChange={([v]) => v !== undefined && onChange(v)} aria-label={label} />
       {hint && <p className="text-[11px] leading-snug text-muted-foreground">{hint}</p>}
     </div>
   );

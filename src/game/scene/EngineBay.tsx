@@ -18,7 +18,7 @@ function SlotGroup({ slot, children }: { slot: SlotId; children: React.ReactNode
     const intensity = hovered ? 0.45 : selected ? 0.2 : 0;
     ref.current?.traverse((o) => {
       const m = (o as THREE.Mesh).material as THREE.MeshStandardMaterial | undefined;
-      if (!m || !("emissive" in m) || m.userData.heat) return;
+      if (!m || !("emissive" in m) || m.userData['heat']) return;
       m.emissive.copy(HIGHLIGHT);
       m.emissiveIntensity = intensity;
     });
@@ -68,7 +68,7 @@ function useHeatGlow(group: React.RefObject<THREE.Group | null>) {
     glow.setRGB(0.55 + 0.45 * t, 0.06 + 0.32 * t * t, 0.01);
     g.traverse((o) => {
       const m = (o as THREE.Mesh).material as THREE.MeshStandardMaterial | undefined;
-      if (!m || !m.userData?.heat) return;
+      if (!m || !m.userData?.['heat']) return;
       m.emissive.copy(glow);
       const target = t * t * 2.2;
       m.emissiveIntensity += (target - m.emissiveIntensity) * (1 - Math.exp(-3 * Math.min(delta, 0.05)));
@@ -76,7 +76,7 @@ function useHeatGlow(group: React.RefObject<THREE.Group | null>) {
   });
 }
 
-const PORT_X = [0.82, 0.96, 1.1, 1.24];
+const PORT_X = [0.82, 0.96, 1.1, 1.24] as const;
 
 function EngineCore() {
   const cam = useGame((s) => s.game.build.camshaft);
