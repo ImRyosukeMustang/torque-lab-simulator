@@ -101,7 +101,7 @@ function EngineCore() {
         <boxGeometry args={[0.05, 0.42, 0.3]} />
         <meshStandardMaterial color={C.blackPlastic} roughness={0.6} />
       </mesh>
-      {[[0.42, 0], [0.62, 0.07], [0.62, -0.07]].map(([y, z], i) => (
+      {([[0.42, 0], [0.62, 0.07], [0.62, -0.07]] as const).map(([y, z], i) => (
         <mesh key={i} position={[1.38, y, z]} rotation-z={Math.PI / 2}>
           <cylinderGeometry args={[i === 0 ? 0.075 : 0.05, i === 0 ? 0.075 : 0.05, 0.035, 28]} />
           <meshStandardMaterial color={C.steel} metalness={0.85} roughness={0.35} />

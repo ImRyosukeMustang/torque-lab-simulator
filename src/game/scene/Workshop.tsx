@@ -152,10 +152,10 @@ export function Workshop() {
         <meshStandardMaterial map={floor} roughness={0.82} metalness={0.05} />
       </mesh>
       {/* bay markings */}
-      {[
+      {([
         [0, 2.2, 6.4, 0.07],
         [0, -2.2, 6.4, 0.07],
-      ].map(([x, z, w, d], i) => (
+      ] as const).map(([x, z, w, d], i) => (
         <mesh key={i} position={[x, 0.003, z]} rotation-x={-Math.PI / 2}>
           <planeGeometry args={[w, d]} />
           <meshStandardMaterial color="#c08a1a" roughness={0.8} />
