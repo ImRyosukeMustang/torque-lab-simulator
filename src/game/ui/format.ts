@@ -34,6 +34,22 @@ export function partSpecs(p: Part): [string, string][] {
         ["Flow", `${p.flowCc} cc/min`],
         ["Total", `${(p.flowCc * 4 * 0.745 / 60).toFixed(1)} g/s`],
       ];
+    case "fuel":
+      return [
+        ["Octane", `${p.octane} RON`],
+        ["Stoich AFR", `${p.stoichAfr}:1`],
+        ["Charge cooling", p.chargeCoolingK ? `−${p.chargeCoolingK} °C` : "—"],
+      ];
+    case "internals":
+      return [
+        ["Compression", `${p.compression}:1`],
+        ["BMEP limit", `${p.bmepLimit} bar`],
+      ];
+    case "cooling":
+      return [
+        ["Heat rejection", `${p.capacityKw} kW`],
+        ["Heat soak", `+${p.heatSoakK} °C`],
+      ];
     case "exhaust":
       return [
         ["Flow capacity", `${Math.round(p.flowCapacity * 1000)} g/s`],

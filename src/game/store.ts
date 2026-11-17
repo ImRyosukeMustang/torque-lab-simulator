@@ -7,18 +7,42 @@ import {
   recordDynoRun,
   sellPart,
   serialize,
+  setCosmetics,
   setTune,
   submitChallenge,
   type GameState,
   type SubmitOutcome,
 } from "./sim/economy";
 import { simulate } from "./sim/engine";
+import type { Cosmetics } from "./sim/cosmetics";
 import type { SimResult, SlotId, Tune } from "./sim/types";
 
-export type Tab = "workshop" | "dyno" | "career";
-export type CameraView = "exterior" | "bay" | "dyno" | SlotId;
+export type Tab = "workshop" | "dyno" | "paint" | "career";
+export type Quality = "high" | "medium" | "low";
+export interface Settings {
+  quality: Quality;
+  sound: boolean;
+  volume: number;
+}
+export type CameraView = "exterior" | "bay" | "dyno" | "paint" | SlotId;
 
 const SAVE_KEY = "automech.save.v1";
+const SETTINGS_KEY = "automech.settings.v1";
+const DEFAULT_SETTINGS: Settings = { quality: "high", sound: true, volume: 0.7 };
+
+function loadSettings(): Settings {
+  try {
+    const raw = JSON.parse(window.localStorage.getItem(SETTINGS_KEY) ?? "null") as Partial<Settings> | null;
+    if (!raw) return DEFAULT_SETTINGS;
+    return {
+      quality: raw.quality === "low" || raw.quality === "medium" || raw.quality === "high" ? raw.quality : DEFAULT_SETTINGS.quality,
+      sound: typeof raw.sound === "boolean" ? raw.sound : DEFAULT_SETTINGS.sound,
+      volume: typeof raw.volume === "number" && raw.volume >= 0 && raw.volume <= 1 ? raw.volume : DEFAULT_SETTINGS.volume,
+    };
+  } catch {
+    return DEFAULT_SETTINGS;
+  }
+}
 
 interface Store {
   game: GameState;
@@ -31,7 +55,13 @@ interface Store {
   /** Result of the previous completed dyno run, for before/after comparison. */
   baseline: SimResult | null;
   lastResult: SimResult | null;
+  settings: Settings;
+  /** True while a dyno pull is running; the UI locks part changes. */
+  dynoRunning: boolean;
   load: () => void;
+  setSettings: (s: Partial<Settings>) => void;
+  setDynoRunning: (r: boolean) => void;
+  updateCosmetics: (c: Partial<Cosmetics>) => void;
   resetSave: () => void;
   setTab: (t: Tab) => void;
   selectSlot: (s: SlotId, focus?: boolean) => void;
@@ -69,6 +99,19 @@ export const useGame = create<Store>((set, get) => {
     hoveredSlot: null,
     baseline: null,
     lastResult: null,
+    settings: DEFAULT_SETTINGS,
+    dynoRunning: false,
+    setSettings: (partial) => {
+      const settings = { ...get().settings, ...partial };
+      set({ settings });
+      try {
+        window.localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+      } catch {
+        /* ignore */
+      }
+    },
+    setDynoRunning: (dynoRunning) => set({ dynoRunning }),
+    updateCosmetics: (c) => commit(setCosmetics(get().game, c)),
     load: () => {
       let raw: string | null = null;
       try {
@@ -78,26 +121,40 @@ export const useGame = create<Store>((set, get) => {
       }
       const game = deserialize(raw);
       const lastResult = game.lastRunKey ? simulate(game.build, game.tune) : null;
-      set({ game, loaded: true, lastResult });
+      set({ game, loaded: true, lastResult, settings: loadSettings() });
     },
     resetSave: () => {
       const game = newGame();
       commit(game);
-      set({ baseline: null, lastResult: null, tab: "workshop", view: "exterior", hoodOpen: false });
+      set({ baseline: null, lastResult: null, tab: "workshop", view: "exterior", hoodOpen: false, hoveredSlot: null });
     },
     setTab: (tab) => {
-      const view: CameraView = tab === "dyno" ? "dyno" : tab === "workshop" ? get().view === "dyno" ? "bay" : get().view : "exterior";
+      if (get().dynoRunning && tab !== "dyno") return;
+      if (tab === "paint") {
+        set({ tab, view: "paint", hoodOpen: false });
+        return;
+      }
+      const cur = get().view;
+      const view: CameraView = tab === "dyno" ? "dyno" : tab === "workshop" ? (cur === "dyno" ? "bay" : cur) : "exterior";
       set({ tab, view, hoodOpen: view !== "exterior" ? true : get().hoodOpen });
     },
-    selectSlot: (selectedSlot, focus = true) =>
-      set(focus ? { selectedSlot, view: selectedSlot, hoodOpen: true, tab: "workshop" } : { selectedSlot }),
-    setView: (view) => set({ view, hoodOpen: view === "exterior" ? get().hoodOpen : true }),
+    selectSlot: (selectedSlot, focus = true) => {
+      if (get().dynoRunning) return;
+      set(focus ? { selectedSlot, view: selectedSlot, hoodOpen: true, tab: "workshop" } : { selectedSlot });
+    },
+    setView: (view) => set({ view, hoodOpen: view === "exterior" ? get().hoodOpen : view === "paint" ? false : true }),
     setHoodOpen: (hoodOpen) => set({ hoodOpen }),
     setHovered: (hoveredSlot) => set({ hoveredSlot }),
     buy: (id) => commit(buyPart(get().game, id)),
     sell: (id) => commit(sellPart(get().game, id)),
-    install: (id) => commit(installPart(get().game, id)),
-    updateTune: (t) => commit(setTune(get().game, t)),
+    install: (id) => {
+      if (get().dynoRunning) return;
+      commit(installPart(get().game, id));
+    },
+    updateTune: (t) => {
+      if (get().dynoRunning) return;
+      commit(setTune(get().game, t));
+    },
     completeDynoRun: () => {
       const { game, lastResult } = get();
       const result = simulate(game.build, game.tune);

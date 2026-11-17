@@ -32,6 +32,14 @@ function SlotGroup({ slot, children }: { slot: SlotId; children: React.ReactNode
     if (useGame.getState().hoveredSlot === slot) useGame.getState().setHovered(null);
     document.body.style.cursor = "";
   };
+  // A swapped part can unmount while hovered: clear the hover and cursor with it.
+  useEffect(
+    () => () => {
+      if (useGame.getState().hoveredSlot === slot) useGame.getState().setHovered(null);
+      document.body.style.cursor = "";
+    },
+    [slot],
+  );
   const click = (e: ThreeEvent<MouseEvent>) => {
     e.stopPropagation();
     if (e.delta > 4) return; // a drag, not a click
@@ -78,20 +86,54 @@ function useHeatGlow(group: React.RefObject<THREE.Group | null>) {
 
 const PORT_X = [0.82, 0.96, 1.1, 1.24] as const;
 
-function EngineCore() {
-  const cam = useGame((s) => s.game.build.camshaft);
-  const coverColor = cam === "cam-race" ? "#8e1e14" : cam === "cam-street" ? C.aluminium : C.blackPlastic;
+const INTERNALS_BADGE: Record<string, string> = { "int-hicomp": "#2f6fb0", "int-forged": "#d07a1a", "int-race": "#b3221a" };
+
+function Internals() {
+  const id = useGame((s) => s.game.build.internals);
+  const forged = id !== "int-stock";
+  const badge = INTERNALS_BADGE[id];
   return (
-    <group>
-      {/* block, head, sump */}
+    <SlotGroup slot="internals">
+      {/* block */}
       <mesh position={[1.03, 0.52, 0]} castShadow receiveShadow>
         <boxGeometry args={[0.58, 0.32, 0.34]} />
         <meshStandardMaterial color={C.castIron} metalness={0.5} roughness={0.7} />
       </mesh>
+      {/* block ribs */}
+      {[0.84, 0.97, 1.1, 1.23].map((x) => (
+        <mesh key={x} position={[x, 0.5, 0.172]}>
+          <boxGeometry args={[0.025, 0.26, 0.012]} />
+          <meshStandardMaterial color={C.castIron} metalness={0.5} roughness={0.75} />
+        </mesh>
+      ))}
+      {/* sump: pressed steel on stock, finned baffled aluminium with forged internals */}
       <mesh position={[1.03, 0.36, 0]} castShadow>
         <boxGeometry args={[0.5, 0.1, 0.28]} />
-        <meshStandardMaterial color={C.castIron} metalness={0.5} roughness={0.75} />
+        <meshStandardMaterial color={forged ? C.aluminium : C.castIron} metalness={forged ? 0.8 : 0.5} roughness={forged ? 0.35 : 0.75} />
       </mesh>
+      {forged &&
+        [-0.1, -0.05, 0, 0.05, 0.1].map((z) => (
+          <mesh key={z} position={[1.03, 0.31, z]}>
+            <boxGeometry args={[0.46, 0.02, 0.008]} />
+            <meshStandardMaterial color={C.aluminium} metalness={0.8} roughness={0.35} />
+          </mesh>
+        ))}
+      {badge && (
+        <mesh position={[0.9, 0.43, 0.172]}>
+          <boxGeometry args={[0.12, 0.05, 0.006]} />
+          <meshStandardMaterial color={badge} metalness={0.4} roughness={0.4} />
+        </mesh>
+      )}
+    </SlotGroup>
+  );
+}
+
+function EngineCore() {
+  const cam = useGame((s) => s.game.build.camshaft);
+  const coverColor = cam === "cam-race" ? "#8e1e14" : cam === "cam-vvt" ? "#24476e" : cam === "cam-street" ? C.aluminium : C.blackPlastic;
+  return (
+    <group>
+      <Internals />
       <mesh position={[1.03, 0.72, 0]} castShadow>
         <boxGeometry args={[0.6, 0.1, 0.36]} />
         <meshStandardMaterial color={C.aluminium} metalness={0.7} roughness={0.45} />
@@ -110,7 +152,7 @@ function EngineCore() {
       <SlotGroup slot="camshaft">
         <mesh position={[1.03, 0.81, 0]} castShadow>
           <boxGeometry args={[0.6, 0.08, 0.3]} />
-          <meshStandardMaterial color={coverColor} metalness={cam === "cam-street" ? 0.7 : 0.2} roughness={cam === "cam-race" ? 0.85 : 0.4} />
+          <meshStandardMaterial color={coverColor} metalness={cam === "cam-street" ? 0.7 : 0.2} roughness={cam === "cam-race" || cam === "cam-vvt" ? 0.85 : 0.4} />
         </mesh>
         {[-0.08, 0.08].map((z) => (
           <mesh key={z} position={[1.03, 0.855, z]}>
@@ -177,9 +219,43 @@ function IntakeSystem({ turbo }: { turbo: boolean }) {
   );
 }
 
+const FUEL_LOOK: Record<string, { cap: string; line: string }> = {
+  "fuel-95": { cap: C.blackPlastic, line: C.hose },
+  "fuel-98": { cap: "#2f6fb0", line: C.hose },
+  "fuel-race": { cap: "#b3221a", line: "#8c8f93" },
+  "fuel-e85": { cap: "#d8a915", line: "#8c8f93" },
+};
+
+function FuelSupply() {
+  const fuel = useGame((s) => s.game.build.fuel);
+  const look = FUEL_LOOK[fuel] ?? FUEL_LOOK["fuel-95"]!;
+  const braided = fuel === "fuel-race" || fuel === "fuel-e85";
+  return (
+    <SlotGroup slot="fuel">
+      {/* filter canister and pressure regulator */}
+      <mesh position={[0.68, 0.66, -0.3]} castShadow>
+        <cylinderGeometry args={[0.035, 0.035, 0.1, 20]} />
+        <meshStandardMaterial color={braided ? C.aluminium : C.steel} metalness={0.8} roughness={0.35} />
+      </mesh>
+      <mesh position={[0.68, 0.72, -0.3]}>
+        <cylinderGeometry args={[0.026, 0.03, 0.025, 20]} />
+        <meshStandardMaterial color={look.cap} metalness={0.4} roughness={0.4} />
+      </mesh>
+      {fuel === "fuel-e85" && (
+        <mesh position={[0.68, 0.6, -0.2]} castShadow>
+          <boxGeometry args={[0.05, 0.04, 0.06]} />
+          <meshStandardMaterial color="#1b1c1e" roughness={0.5} />
+        </mesh>
+      )}
+      <Tube points={[[0.68, 0.72, -0.3], [0.7, 0.8, -0.22], [0.74, 0.86, -0.15]]} radius={braided ? 0.01 : 0.007} color={look.line} metal={braided ? 0.8 : 0.1} rough={braided ? 0.45 : 0.8} />
+      <Tube points={[[0.68, 0.61, -0.3], [0.64, 0.5, -0.25], [0.64, 0.32, -0.2]]} radius={braided ? 0.01 : 0.007} color={look.line} metal={braided ? 0.8 : 0.1} rough={braided ? 0.45 : 0.8} />
+    </SlotGroup>
+  );
+}
+
 function FuelSystem() {
   const inj = useGame((s) => s.game.build.injectors);
-  const color = { "inj-stock": "#5d6166", "inj-440": "#2f6fb0", "inj-750": "#c99a1d", "inj-1000": "#a3291c" }[inj] ?? "#5d6166";
+  const color = { "inj-stock": "#5d6166", "inj-440": "#2f6fb0", "inj-750": "#c99a1d", "inj-1000": "#a3291c", "inj-1300": "#2f7a3e" }[inj] ?? "#5d6166";
   return (
     <SlotGroup slot="injectors">
       <mesh position={[1.03, 0.86, -0.15]} rotation-z={Math.PI / 2} castShadow>
@@ -206,21 +282,23 @@ function ExhaustAndTurbo({ turbo }: { turbo: string }) {
     if (wheel.current && dynoLive.running) wheel.current.rotation.x += dynoLive.boostBar * 60 * Math.min(delta, 0.05);
   });
   const hasTurbo = turbo !== "turbo-none";
-  const scale = turbo === "turbo-t25" ? 1.05 : turbo === "turbo-t35" ? 1.3 : 1.6;
-  const primaryR = exhaust === "exh-3in" ? 0.021 : 0.018;
+  const scale = turbo === "turbo-t25" ? 1.05 : turbo === "turbo-t30" ? 1.18 : turbo === "turbo-t35" ? 1.3 : 1.6;
+  const tubular = exhaust === "exh-header";
+  const primaryR = tubular ? 0.024 : exhaust === "exh-3in" ? 0.021 : 0.018;
   const collector: [number, number, number] = hasTurbo ? [1.02, 0.62, 0.38] : [1.02, 0.52, 0.36];
-  const downR = exhaust === "exh-3in" ? 0.04 : exhaust === "exh-catback" ? 0.033 : 0.03;
+  const downR = tubular ? 0.046 : exhaust === "exh-3in" ? 0.04 : exhaust === "exh-catback" ? 0.033 : 0.03;
+  const pipeColor = tubular ? "#7a6a80" : C.steel;
 
   return (
     <group ref={heatRef}>
       <SlotGroup slot="exhaust">
         {PORT_X.map((x) => (
-          <Tube key={x} points={[[x, 0.66, 0.17], [x, 0.64, 0.27], [(x + collector[0]) / 2, 0.57, 0.34], collector]} radius={primaryR} color={C.steel} metal={0.85} rough={0.35} heat />
+          <Tube key={x} points={tubular ? [[x, 0.66, 0.17], [x, 0.66, 0.24], [x + (collector[0] - x) * 0.3, 0.6, 0.31], [(x + collector[0]) / 2, 0.55, 0.35], collector] : [[x, 0.66, 0.17], [x, 0.64, 0.27], [(x + collector[0]) / 2, 0.57, 0.34], collector]} radius={primaryR} color={pipeColor} metal={0.85} rough={0.3} heat />
         ))}
         <Tube
           points={hasTurbo ? [[0.95, 0.72, 0.45], [0.82, 0.66, 0.47], [0.74, 0.42, 0.4], [0.7, 0.26, 0.2]] : [collector, [0.94, 0.42, 0.36], [0.8, 0.3, 0.3], [0.68, 0.24, 0.2]]}
           radius={downR}
-          color={C.steel}
+          color={pipeColor}
           metal={0.85}
           rough={0.4}
           heat
@@ -262,6 +340,33 @@ function Intercooler({ turbo }: { turbo: boolean }) {
   const w = big ? 1.18 : 0.88;
   const h = big ? 0.17 : 0.14;
   const fins = Math.round(w / 0.04);
+  if (ic === "ic-w2a") {
+    // Chargecooler sits in the intake tract next to the plenum, fed by a small front heat exchanger.
+    return (
+      <SlotGroup slot="intercooler">
+        <group position={[1.46, 0.8, 0.12]}>
+          <mesh castShadow>
+            <boxGeometry args={[0.14, 0.1, 0.24]} />
+            <meshStandardMaterial color={C.aluminium} metalness={0.85} roughness={0.3} />
+          </mesh>
+          {[-0.08, 0, 0.08].map((z) => (
+            <mesh key={z} position={[0, 0.055, z]}>
+              <boxGeometry args={[0.13, 0.012, 0.02]} />
+              <meshStandardMaterial color="#6b7177" metalness={0.8} roughness={0.4} />
+            </mesh>
+          ))}
+        </group>
+        <mesh position={[1.98, 0.5, 0]} castShadow>
+          <boxGeometry args={[0.04, 0.12, 0.7]} />
+          <meshStandardMaterial color="#2e3236" metalness={0.7} roughness={0.5} />
+        </mesh>
+        <Tube points={[[1.18, 0.8, 0.46], [1.38, 0.82, 0.3], [1.46, 0.8, 0.24]]} radius={0.03} color={C.aluminium} metal={0.85} rough={0.3} />
+        <Tube points={[[1.46, 0.8, 0.0], [1.46, 0.8, -0.2], [1.42, 0.79, -0.31]]} radius={0.03} color={C.aluminium} metal={0.85} rough={0.3} />
+        <Tube points={[[1.5, 0.76, 0.2], [1.75, 0.5, 0.3], [1.96, 0.5, 0.3]]} radius={0.01} color="#2a5fa8" metal={0.1} rough={0.6} />
+        <Tube points={[[1.5, 0.76, 0.04], [1.75, 0.46, -0.1], [1.96, 0.46, -0.3]]} radius={0.01} color="#2a5fa8" metal={0.1} rough={0.6} />
+      </SlotGroup>
+    );
+  }
   return (
     <SlotGroup slot="intercooler">
       {ic !== "ic-none" ? (
@@ -319,6 +424,52 @@ function Ecu() {
   );
 }
 
+function Cooling() {
+  const id = useGame((s) => s.game.build.cooling);
+  const alu = id !== "cool-stock";
+  const thick = id === "cool-race" ? 0.075 : 0.05;
+  const fans = alu ? [-0.24, 0.24] : [0];
+  return (
+    <SlotGroup slot="cooling">
+      <mesh position={[1.82, 0.55, 0]} castShadow>
+        <boxGeometry args={[thick, 0.36, 1.06]} />
+        <meshStandardMaterial color={alu ? "#9aa0a6" : "#26292c"} metalness={alu ? 0.8 : 0.5} roughness={alu ? 0.35 : 0.6} />
+      </mesh>
+      {/* end tanks */}
+      {[-1, 1].map((s) => (
+        <mesh key={s} position={[1.82, 0.55, s * 0.55]}>
+          <boxGeometry args={[thick + 0.02, 0.38, 0.05]} />
+          <meshStandardMaterial color={alu ? C.aluminium : C.blackPlastic} metalness={alu ? 0.85 : 0.1} roughness={alu ? 0.3 : 0.6} />
+        </mesh>
+      ))}
+      {fans.map((z) => (
+        <group key={z} position={[1.77, 0.55, z]}>
+          <mesh rotation-z={Math.PI / 2}>
+            <cylinderGeometry args={[alu ? 0.14 : 0.15, alu ? 0.14 : 0.15, 0.03, 32]} />
+            <meshStandardMaterial color={C.blackPlastic} roughness={0.7} />
+          </mesh>
+          <mesh position-x={-0.02} rotation-z={Math.PI / 2}>
+            <cylinderGeometry args={[0.035, 0.035, 0.03, 16]} />
+            <meshStandardMaterial color={C.steel} metalness={0.8} roughness={0.4} />
+          </mesh>
+        </group>
+      ))}
+      {id === "cool-race" && (
+        <group>
+          {/* oil cooler with braided lines */}
+          <mesh position={[1.95, 0.33, -0.3]} castShadow>
+            <boxGeometry args={[0.04, 0.09, 0.32]} />
+            <meshStandardMaterial color="#2e3236" metalness={0.7} roughness={0.5} />
+          </mesh>
+          <Tube points={[[1.93, 0.34, -0.14], [1.6, 0.3, -0.1], [1.3, 0.34, -0.05]]} radius={0.011} color="#8c8f93" metal={0.8} rough={0.45} />
+          <Tube points={[[1.93, 0.32, -0.46], [1.6, 0.28, -0.3], [1.3, 0.33, -0.12]]} radius={0.011} color="#8c8f93" metal={0.8} rough={0.45} />
+        </group>
+      )}
+      <Tube points={[[1.79, 0.7, 0.4], [1.6, 0.76, 0.3], [1.36, 0.72, 0.12]]} radius={0.022} color={alu ? "#2a5fa8" : C.hose} metal={0.1} rough={0.7} />
+    </SlotGroup>
+  );
+}
+
 function BayDetails() {
   return (
     <group>
@@ -329,15 +480,7 @@ function BayDetails() {
           <meshStandardMaterial color="#9a3a17" metalness={0.35} roughness={0.4} />
         </mesh>
       ))}
-      {/* radiator and fan */}
-      <mesh position={[1.82, 0.55, 0]} castShadow>
-        <boxGeometry args={[0.05, 0.36, 1.06]} />
-        <meshStandardMaterial color="#26292c" metalness={0.5} roughness={0.6} />
-      </mesh>
-      <mesh position={[1.77, 0.55, 0]} rotation-z={Math.PI / 2}>
-        <cylinderGeometry args={[0.15, 0.15, 0.03, 32]} />
-        <meshStandardMaterial color={C.blackPlastic} roughness={0.7} />
-      </mesh>
+      <Cooling />
       {/* battery */}
       <mesh position={[0.82, 0.44, 0.48]} castShadow>
         <boxGeometry args={[0.22, 0.18, 0.15]} />
@@ -379,6 +522,7 @@ export function EngineBay() {
         <EngineCore />
         <IntakeSystem turbo={turbo !== "turbo-none"} />
         <FuelSystem />
+        <FuelSupply />
         <ExhaustAndTurbo turbo={turbo} />
         <Ecu />
       </group>

@@ -80,4 +80,53 @@ describe("engine simulation", () => {
   it("build cost sums the installed part prices", () => {
     expect(buildCost(B({ intake: "intake-cai", exhaust: "exh-catback" }))).toBe(1150);
   });
+
+  const boosted = { intake: "intake-hf", turbo: "turbo-t45", intercooler: "ic-large", injectors: "inj-1000", exhaust: "exh-3in", ecu: "ecu-standalone" } as const;
+  const minKnock = (r: ReturnType<typeof simulate>) => Math.min(...r.curve.map((p) => p.knockMargin));
+  const maxDuty = (r: ReturnType<typeof simulate>) => Math.max(...r.curve.map((p) => p.injectorDuty));
+
+  it("E85 adds knock margin but needs more injector flow than gasoline", () => {
+    const tune = T({ boostTarget: 1.2, afrTarget: 11.8 });
+    const gas = simulate(B({ ...boosted }), tune);
+    const e85 = simulate(B({ ...boosted, fuel: "fuel-e85" }), tune);
+    expect(minKnock(e85)).toBeGreaterThan(minKnock(gas) + 0.5);
+    expect(maxDuty(e85)).toBeGreaterThan(maxDuty(gas) * 1.4);
+  });
+
+  it("higher octane fuel adds knock margin", () => {
+    const tune = T({ boostTarget: 1.0, afrTarget: 11.8 });
+    const r95 = simulate(B({ ...boosted }), tune);
+    const r98 = simulate(B({ ...boosted, fuel: "fuel-98" }), tune);
+    expect(minKnock(r98)).toBeGreaterThan(minKnock(r95));
+  });
+
+  it("forged internals survive cylinder pressure that breaks the stock pistons", () => {
+    const tune = T({ boostTarget: 1.4, afrTarget: 11.4, timingOffset: 3, revLimit: 8000 });
+    const b = { ...boosted, fuel: "fuel-e85", injectors: "inj-1300", cooling: "cool-race" } as const;
+    const cast = simulate(B(b), tune);
+    const forged = simulate(B({ ...b, internals: "int-race" }), tune);
+    expect(cast.diagnostics.some((d) => d.code === "BMEP_OVER")).toBe(true);
+    expect(forged.diagnostics.some((d) => d.code === "BMEP_OVER")).toBe(false);
+    expect(forged.reliability).toBeGreaterThan(cast.reliability + 20);
+  });
+
+  it("high compression makes more NA power but less knock margin", () => {
+    const na = { intake: "intake-hf", camshaft: "cam-street", exhaust: "exh-3in", ecu: "ecu-piggy" } as const;
+    const lo = simulate(B({ ...na }), T({ afrTarget: 12.8 }));
+    const hi = simulate(B({ ...na, internals: "int-hicomp" }), T({ afrTarget: 12.8 }));
+    expect(hi.peakPowerHp).toBeGreaterThan(lo.peakPowerHp);
+    expect(minKnock(hi)).toBeLessThan(minKnock(lo));
+  });
+
+  it("a bigger radiator lowers thermal load", () => {
+    const tune = T({ boostTarget: 1.2, afrTarget: 11.8 });
+    const stock = simulate(B({ ...boosted }), tune);
+    const race = simulate(B({ ...boosted, cooling: "cool-race" }), tune);
+    expect(race.thermalLoad).toBeLessThan(stock.thermalLoad * 0.7);
+  });
+
+  it("wheel power is about 14% below crank power", () => {
+    const r = simulate(STOCK_BUILD, STOCK_TUNE);
+    expect(r.wheelPowerHp).toBeCloseTo(r.peakPowerHp * 0.86, 0);
+  });
 });

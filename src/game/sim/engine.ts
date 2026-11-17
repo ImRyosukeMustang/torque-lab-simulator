@@ -9,7 +9,13 @@ const LHV = 44e6; // J/kg gasoline
 const STOICH = 14.7;
 const FUEL_DENSITY = 0.745; // g/cc
 const MAX_DUTY = 0.95;
-const HEAT_SOAK_K = 10;
+/** Compression ratio and octane the base efficiency / knock maps were calibrated on. */
+const BASE_CR = 9.5;
+const BASE_RON = 95;
+/** Share of fuel energy rejected to coolant and oil. */
+const COOLANT_SHARE = 0.28;
+/** Chassis-dyno drivetrain loss (gearbox, diff, tyres). */
+const DRIVETRAIN_LOSS = 0.14;
 const RPM_START = 1500;
 const RPM_STEP = 250;
 
@@ -39,6 +45,11 @@ export function timingFactor(offset: number): number {
   return 1 + 0.012 * offset - 0.0012 * offset * offset;
 }
 
+/** Otto-cycle efficiency relative to the base compression ratio (effective gamma-1 = 0.3). */
+export function compressionFactor(cr: number): number {
+  return (1 - cr ** -0.3) / (1 - BASE_CR ** -0.3);
+}
+
 /** Cam-only volumetric efficiency at an RPM. */
 export function camVE(build: Build, rpm: number): number {
   const cam = getPart("camshaft", build.camshaft);
@@ -60,7 +71,13 @@ function simulatePoint(build: Build, tune: Tune, rpm: number): PointState {
   const ic = getPart("intercooler", build.intercooler);
   const inj = getPart("injectors", build.injectors);
   const exh = getPart("exhaust", build.exhaust);
+  const fuelP = getPart("fuel", build.fuel);
+  const internals = getPart("internals", build.internals);
+  const cooling = getPart("cooling", build.cooling);
   const hasTurbo = turbo.maximumFlow > 0;
+  const HEAT_SOAK_K = cooling.heatSoakK;
+  // Evaporative cooling scales with how much fuel is being sprayed (full at WOT).
+  const fuelCoolK = fuelP.chargeCoolingK;
 
   const vd = ENGINE.displacementL / 1000; // m^3
   const cycleRate = rpm / 120; // intake events per second for the whole engine (4-stroke)
@@ -104,10 +121,10 @@ function simulatePoint(build: Build, tune: Tune, rpm: number): PointState {
       const pr = Math.max(1, (map + icDrop) / p1);
       const etaC = turbo.compressorEfficiency * (1 - 0.3 * clamp((turboFlowRatio - 0.75) / 0.25, 0, 1.5));
       const t2 = AMBIENT.tempK * (1 + (pr ** 0.2857 - 1) / Math.max(0.4, etaC));
-      chargeK = t2 - ic.effectiveness * (t2 - AMBIENT.tempK) + HEAT_SOAK_K;
+      chargeK = t2 - ic.effectiveness * (t2 - AMBIENT.tempK) + HEAT_SOAK_K - fuelCoolK;
     } else {
       map = p1;
-      chargeK = AMBIENT.tempK + HEAT_SOAK_K;
+      chargeK = AMBIENT.tempK + HEAT_SOAK_K - fuelCoolK;
     }
     const rho = (map * 1e5) / (R_AIR * chargeK);
     mdot = ve * rho * vd * cycleRate;
@@ -116,27 +133,30 @@ function simulatePoint(build: Build, tune: Tune, rpm: number): PointState {
 
   // Fuel delivery
   const injCapKgS = (inj.flowCc * ENGINE.cylinders * FUEL_DENSITY) / 60 / 1000;
-  const fuelReq = mdot / tune.afrTarget;
+  // The AFR target is gasoline-equivalent (lambda x 14.7); low-stoich fuels need more mass.
+  const stoichRatio = fuelP.stoichAfr / STOICH;
+  const fuelReq = mdot / (tune.afrTarget * stoichRatio);
   let duty = fuelReq / injCapKgS;
   let fuel = fuelReq;
   if (duty > MAX_DUTY) {
     duty = MAX_DUTY;
     fuel = MAX_DUTY * injCapKgS;
   }
-  const afr = mdot / fuel;
+  const afr = mdot / fuel / stoichRatio;
 
   // Knock margin (>0 safe). Driven by manifold pressure, charge temp, advance and mixture.
   const knockIndex =
-    0.45 * boostActual + (chargeK - 315) / 80 + 0.11 * tune.timingOffset + 0.2 * (afr - 12.5);
+    0.45 * boostActual + (chargeK - 315) / 80 + 0.11 * tune.timingOffset + 0.2 * (afr - 12.5) +
+    0.2 * (internals.compression - BASE_CR) - 0.055 * (fuelP.octane - BASE_RON);
   const knockMargin = 1 - knockIndex;
 
   // Combustion and losses
   const fuelEnergyW = (mdot / STOICH) * LHV * afrPowerFactor(afr);
-  let etaI = 0.45 * timingFactor(tune.timingOffset);
+  let etaI = 0.45 * timingFactor(tune.timingOffset) * compressionFactor(internals.compression);
   if (knockMargin < 0) etaI *= 1 - Math.min(0.15, -knockMargin * 0.12);
   const indicatedW = fuelEnergyW * etaI;
   const k = rpm / 1000;
-  const fmepBar = 0.5 + 0.07 * k + 0.018 * k * k;
+  const fmepBar = 0.5 + 0.07 * k + 0.018 * k * k + internals.frictionBar * k;
   const frictionW = fmepBar * 1e5 * vd * cycleRate;
   const brakeW = Math.max(0, indicatedW - frictionW);
   const bmepBar = brakeW / (vd * cycleRate) / 1e5;
@@ -145,6 +165,7 @@ function simulatePoint(build: Build, tune: Tune, rpm: number): PointState {
 
   const egtC =
     540 + 14 * bmepBar + 55 * (afr - 12.5) - 14 * tune.timingOffset + 60 * (rpm / 7000) +
+    fuelP.egtOffsetC - 25 * (internals.compression - BASE_CR) +
     (knockMargin < 0 ? -knockMargin * 80 : 0);
 
   return {
@@ -174,6 +195,12 @@ export function simulate(build: Build, rawTune: Tune): SimResult {
   const tune = clampTune(build, rawTune);
   const cam = getPart("camshaft", build.camshaft);
   const turbo = getPart("turbo", build.turbo);
+  const internals = getPart("internals", build.internals);
+  const cooling = getPart("cooling", build.cooling);
+  const ic = getPart("intercooler", build.intercooler);
+  const fuelP = getPart("fuel", build.fuel);
+  const bmepLimit = internals.bmepLimit;
+  const bmepWarn = bmepLimit - 3;
 
   const states: PointState[] = [];
   for (let rpm = RPM_START; rpm < tune.revLimit; rpm += RPM_STEP) states.push(simulatePoint(build, tune, rpm));
@@ -192,7 +219,7 @@ export function simulate(build: Build, rawTune: Tune): SimResult {
   const maxFlowRatio = Math.max(...states.map((s) => s.turboFlowRatio));
   const loaded = curve.filter((p) => p.bmepBar > 6);
   const maxLoadedAfr = Math.max(...loaded.map((p) => p.afr), 0);
-  const thermalLoad = Math.max(...states.map((s) => (s.fuelEnergyKw * 0.28) / ENGINE.coolingCapacityKw));
+  const thermalLoad = Math.max(...states.map((s) => (s.fuelEnergyKw * COOLANT_SHARE) / cooling.capacityKw));
 
   const diagnostics: Diagnostic[] = [];
   let rel = 100;
@@ -201,12 +228,12 @@ export function simulate(build: Build, rawTune: Tune): SimResult {
   };
 
   // Internals stress
-  if (peakBmep > 21) hit((peakBmep - 21) * 1.5);
-  if (peakBmep > ENGINE.internalsBmepLimit) {
-    hit((peakBmep - ENGINE.internalsBmepLimit) * 6);
-    diagnostics.push({ code: "BMEP_OVER", severity: "critical", message: `Cylinder pressure ${round(peakBmep)} bar BMEP exceeds the stock internals limit of ${ENGINE.internalsBmepLimit} bar.` });
-  } else if (peakBmep > 21) {
-    diagnostics.push({ code: "BMEP_HIGH", severity: "warning", message: `BMEP ${round(peakBmep)} bar is approaching the internals limit (${ENGINE.internalsBmepLimit} bar).` });
+  if (peakBmep > bmepWarn) hit((peakBmep - bmepWarn) * 1.5);
+  if (peakBmep > bmepLimit) {
+    hit((peakBmep - bmepLimit) * 6);
+    diagnostics.push({ code: "BMEP_OVER", severity: "critical", slot: "internals", message: `Cylinder pressure ${round(peakBmep)} bar BMEP exceeds what the ${internals.name} survive (${bmepLimit} bar). Forged internals raise the limit.` });
+  } else if (peakBmep > bmepWarn) {
+    diagnostics.push({ code: "BMEP_HIGH", severity: "warning", slot: "internals", message: `BMEP ${round(peakBmep)} bar is approaching the pistons' and rods' limit (${bmepLimit} bar).` });
   }
 
   // Exhaust temperature
@@ -269,7 +296,18 @@ export function simulate(build: Build, rawTune: Tune): SimResult {
   // Cooling
   if (thermalLoad > 0.85) {
     hit((thermalLoad - 0.85) * 60);
-    diagnostics.push({ code: "THERMAL", severity: thermalLoad > 1 ? "critical" : "warning", message: `Cooling system at ${Math.round(thermalLoad * 100)}% of capacity under sustained load.` });
+    diagnostics.push({ code: "THERMAL", severity: thermalLoad > 1 ? "critical" : "warning", slot: "cooling", message: `Cooling system at ${Math.round(thermalLoad * 100)}% of capacity under sustained load. A bigger radiator rejects more heat.` });
+  }
+
+  // Parts that cannot help this configuration
+  if (turbo.maximumFlow === 0 && ic.effectiveness > 0) {
+    diagnostics.push({ code: "IC_UNUSED", severity: "info", slot: "intercooler", message: "An intercooler only cools compressed air. Without a turbocharger it adds pipework and cost but no benefit." });
+  }
+  if (fuelP.stoichAfr < 14 && maxDuty > 0.8) {
+    diagnostics.push({ code: "E85_FLOW", severity: "info", slot: "fuel", message: "E85 needs about 45% more fuel mass than gasoline for the same air. Size injectors for ethanol." });
+  }
+  if (internals.compression > 10.5 && turbo.maximumFlow > 0) {
+    diagnostics.push({ code: "HICOMP_BOOST", severity: "warning", slot: "internals", message: `A ${internals.compression}:1 compression ratio under boost leaves very little knock margin. Low-compression forged pistons suit turbo builds.` });
   }
 
   // Intake restriction hint
@@ -297,6 +335,7 @@ export function simulate(build: Build, rawTune: Tune): SimResult {
     reliability: round(clamp(rel, 0, 100)),
     diagnostics,
     buildCost: buildCost(build),
+    wheelPowerHp: round(pPow.powerHp * (1 - DRIVETRAIN_LOSS)),
   };
 }
 
