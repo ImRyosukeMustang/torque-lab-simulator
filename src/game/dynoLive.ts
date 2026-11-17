@@ -7,4 +7,6 @@ export const dynoLive = {
   load: 0,
   egtC: 25,
   boostBar: 0,
+  /** 0..1 burst intensity for exhaust flames (rev limiter / lift-off). */
+  pop: 0,
 };
