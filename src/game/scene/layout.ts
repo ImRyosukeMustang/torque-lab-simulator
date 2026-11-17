@@ -27,7 +27,10 @@ export const SLOT_FOCUS: Record<SlotId, { target: Vec3; camera: Vec3 }> = {
   turbo: { target: [1.08, 0.7, 0.42], camera: [1.05, 2.35, 1.15] },
   intercooler: { target: [1.95, 0.52, 0], camera: [3.4, 1.15, 0.9] },
   injectors: { target: [1.02, 0.84, -0.14], camera: [1.6, 2.05, -1.0] },
+  fuel: { target: [0.72, 0.72, -0.3], camera: [1.35, 1.95, -1.15] },
   exhaust: { target: [0.98, 0.6, 0.34], camera: [0.75, 2.1, 1.3] },
+  internals: { target: [1.03, 0.46, 0.05], camera: [1.75, 1.75, 1.25] },
+  cooling: { target: [1.8, 0.52, 0], camera: [3.0, 1.5, 1.25] },
   ecu: { target: [0.76, 0.58, -0.48], camera: [1.45, 1.95, -1.3] },
 };
 
@@ -35,6 +38,7 @@ export const VIEWS = {
   exterior: { target: [0, 0.6, 0] as Vec3, camera: [5.4, 2.1, 5.0] as Vec3 },
   bay: { target: [1.22, 0.62, 0] as Vec3, camera: [3.3, 2.5, 1.9] as Vec3 },
   dyno: { target: [0.4, 0.6, 0] as Vec3, camera: [3.9, 2.0, 3.6] as Vec3 },
+  paint: { target: [0, 0.55, 0] as Vec3, camera: [4.6, 1.5, 4.4] as Vec3 },
 };
 
 export const WHEEL = { radius: 0.33, frontX: 1.33, rearX: -1.33, z: 0.8 };
