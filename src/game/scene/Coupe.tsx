@@ -380,7 +380,7 @@ function deckShape() {
   return s;
 }
 
-function Stripes({ look, hoodGeo }: { look: Cosmetics; hoodGeo: { lanes: [number, number][]; build: (depth: number, z: number) => Record<string, THREE.BufferGeometry> } }) {
+function Stripes({ look, hoodGeo }: { look: Cosmetics; hoodGeo: { lanes: [number, number][]; build: (depth: number, z: number) => { nose: THREE.BufferGeometry; roof: THREE.BufferGeometry; deck: THREE.BufferGeometry } } }) {
   const mat = useStripeMaterial(look.stripeColor);
   const parts = useMemo(() => hoodGeo.lanes.map(([w, z]) => hoodGeo.build(w, z)), [hoodGeo]);
   useEffect(() => () => parts.forEach((p) => Object.values(p).forEach((g) => g.dispose())), [parts]);

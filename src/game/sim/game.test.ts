@@ -33,7 +33,7 @@ describe("challenges", () => {
   });
 
   it("c7 refuses a gasoline build even if it makes the numbers", () => {
-    const s = SOLUTIONS.c7!;
+    const s = SOLUTIONS["c7"]!;
     const b = { ...STOCK_BUILD, ...s.build, fuel: "fuel-race" };
     const ev = evaluateChallenge(ch("c7"), b, simulate(b, { ...STOCK_TUNE, ...s.tune }));
     expect(ev.checks.find((x) => x.label.startsWith("Fitted"))!.pass).toBe(false);
