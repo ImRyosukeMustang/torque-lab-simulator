@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { CHALLENGES, evaluateChallenge, rewardFor } from "./challenges";
 import { simulate } from "./engine";
 import { buyPart, configKey, deserialize, installPart, newGame, recordDynoRun, sellPart, serialize, setTune, STARTING_CREDITS, submitChallenge, type GameState } from "./economy";
-import { STOCK_BUILD, STOCK_TUNE } from "./parts";
+import { findPart, STOCK_BUILD, STOCK_TUNE } from "./parts";
 import type { Build, Tune } from "./types";
 
 const ch = (id: string) => CHALLENGES.find((c) => c.id === id)!;
@@ -13,11 +13,31 @@ const SOLUTIONS: Record<string, { build: Partial<Build>; tune: Partial<Tune> }> 
   c2: { build: { intake: "intake-hf", camshaft: "cam-street", exhaust: "exh-catback", ecu: "ecu-piggy" }, tune: { afrTarget: 12.8, timingOffset: 3 } },
   c3: { build: { intake: "intake-hf", turbo: "turbo-t25", intercooler: "ic-small", injectors: "inj-440", exhaust: "exh-catback", ecu: "ecu-piggy" }, tune: { boostTarget: 1.1, afrTarget: 11.8 } },
   c4: { build: { intake: "intake-hf", turbo: "turbo-t25", intercooler: "ic-large", injectors: "inj-440", ecu: "ecu-piggy" }, tune: { boostTarget: 1.1, afrTarget: 12.2, timingOffset: 2 } },
+  c6: { build: { intake: "intake-hf", camshaft: "cam-race", exhaust: "exh-header", ecu: "ecu-standalone", internals: "int-hicomp", fuel: "fuel-race" }, tune: { afrTarget: 12.8, timingOffset: 6, revLimit: 8000 } },
+  c7: { build: { intake: "intake-hf", camshaft: "cam-race", turbo: "turbo-t45", intercooler: "ic-w2a", injectors: "inj-1300", exhaust: "exh-header", ecu: "ecu-standalone", fuel: "fuel-e85", internals: "int-race", cooling: "cool-race" }, tune: { boostTarget: 1.5, afrTarget: 11.4, timingOffset: 6, revLimit: 8000 } },
   c5: { build: { intake: "intake-hf", camshaft: "cam-race", turbo: "turbo-t45", intercooler: "ic-large", injectors: "inj-750", exhaust: "exh-3in", ecu: "ecu-standalone" }, tune: { boostTarget: 0.9, afrTarget: 12.2, timingOffset: 4, revLimit: 8000 } },
 };
 
 describe("challenges", () => {
-  it("there are five challenges", () => expect(CHALLENGES).toHaveLength(5));
+  it("there are seven challenges", () => expect(CHALLENGES).toHaveLength(7));
+
+  it("every known solution only uses parts unlocked before that challenge", () => {
+    for (const c of CHALLENGES) {
+      const idx = CHALLENGES.indexOf(c);
+      const done = new Set(CHALLENGES.slice(0, idx).map((x) => x.id));
+      for (const id of Object.values(SOLUTIONS[c.id]!.build)) {
+        const p = findPart(id!)!;
+        expect(!p.unlockAfter || done.has(p.unlockAfter), `${c.id} uses locked ${id}`).toBe(true);
+      }
+    }
+  });
+
+  it("c7 refuses a gasoline build even if it makes the numbers", () => {
+    const s = SOLUTIONS.c7!;
+    const b = { ...STOCK_BUILD, ...s.build, fuel: "fuel-race" };
+    const ev = evaluateChallenge(ch("c7"), b, simulate(b, { ...STOCK_TUNE, ...s.tune }));
+    expect(ev.checks.find((x) => x.label.startsWith("Fitted"))!.pass).toBe(false);
+  });
 
   for (const c of CHALLENGES) {
     it(`${c.id} fails on the stock car and passes with a known build`, () => {

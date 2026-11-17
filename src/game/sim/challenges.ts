@@ -1,7 +1,7 @@
 // Engineering challenges as data. Grading reads only the SimResult + Build,
 // so the dyno, the workshop and the career screen can never disagree.
 import { sampleCurve } from "./engine";
-import { getPart } from "./parts";
+import { findPart, getPart } from "./parts";
 import type { Build, SimResult } from "./types";
 
 export type Grade = "bronze" | "silver" | "gold";
@@ -22,6 +22,8 @@ export interface Challenge {
     minTorqueAt?: { rpm: number; nm: number };
     maxEgtC?: number;
     aspiration?: "na" | "turbo";
+    /** A part that must be installed (e.g. a fuel type). */
+    requirePart?: string;
   };
   metric: { kind: MetricKind; rpm?: number; label: string; unit: string; silver: number; gold: number };
   reward: Record<Grade, number>;
@@ -78,6 +80,26 @@ export const CHALLENGES: Challenge[] = [
     metric: { kind: "peakHp", label: "Peak power", unit: "hp", silver: 385, gold: 400 },
     reward: { bronze: 8000, silver: 11000, gold: 15000 },
   },
+  {
+    id: "c6",
+    level: 6,
+    title: "Atmospheric Peak",
+    brief: "A hill-climb privateer wants razor throttle response: no turbo allowed. Squeeze every horsepower from compression, cam timing, fuel quality and exhaust flow.",
+    skills: ["Compression ratio", "Octane and ignition", "Exhaust scavenging"],
+    constraints: { maxBudget: 10000, minReliability: 95, minPeakHp: 230, aspiration: "na" },
+    metric: { kind: "peakHp", label: "Peak power", unit: "hp", silver: 233, gold: 235 },
+    reward: { bronze: 9000, silver: 12000, gold: 15000 },
+  },
+  {
+    id: "c7",
+    level: 7,
+    title: "Ethanol Era",
+    brief: "A time-attack team runs on E85. Convert the fuel system, build the bottom end and make serious power while keeping exhaust temperatures inside the endurance limit.",
+    skills: ["Alternative fuels", "Fuel system sizing", "Forged internals"],
+    constraints: { maxBudget: 24000, minReliability: 90, minPeakHp: 480, maxEgtC: 920, aspiration: "turbo", requirePart: "fuel-e85" },
+    metric: { kind: "peakHp", label: "Peak power", unit: "hp", silver: 505, gold: 512 },
+    reward: { bronze: 12000, silver: 16000, gold: 20000 },
+  },
 ];
 
 export interface RequirementCheck {
@@ -129,6 +151,11 @@ export function evaluateChallenge(ch: Challenge, build: Build, result: SimResult
       pass: c.aspiration === "turbo" ? turbo : !turbo,
     });
   }
+  if (c.requirePart) {
+    const need = findPart(c.requirePart);
+    const has = need ? build[need.slot] === need.id : false;
+    checks.push({ label: need ? `Fitted: ${need.name}` : "Required part", target: "Installed", actual: has ? "Installed" : "Missing", pass: has });
+  }
   const passed = checks.every((x) => x.pass);
   const value = metricValue(ch, result);
   let grade: Grade | null = null;
@@ -159,5 +186,6 @@ export function describeRequirements(ch: Challenge): { label: string; target: st
   if (c.minTorqueAt) out.push({ label: `Torque @ ${c.minTorqueAt.rpm} rpm`, target: `≥ ${c.minTorqueAt.nm} Nm` });
   if (c.maxEgtC !== undefined) out.push({ label: "Peak EGT", target: `≤ ${c.maxEgtC}°C` });
   if (c.aspiration) out.push({ label: "Aspiration", target: c.aspiration === "na" ? "NA only" : "Turbo" });
+  if (c.requirePart) out.push({ label: "Required part", target: findPart(c.requirePart)?.name ?? c.requirePart });
   return out;
 }
