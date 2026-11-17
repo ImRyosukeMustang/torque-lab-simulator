@@ -11,7 +11,6 @@ const ARCH_A = Math.PI + 0.283;
 const ARCH_B = -0.283;
 
 function extrude(shape: THREE.Shape, depth: number, bevel: number, zCenter = 0) {
-  // (curveSegments kept high so stripes extruded from the same profile line up exactly)
   const g = new THREE.ExtrudeGeometry(shape, {
     depth,
     bevelEnabled: true,
@@ -516,7 +515,6 @@ export function Coupe({ children }: { children?: React.ReactNode }) {
     () => ({
       lanes: stripeLanes(look.stripe),
       build: (w: number, z: number) => ({
-        hood: extrude(hoodShape(), w, 0.012, z),
         nose: extrude(upperNoseShape(), w, 0.03, z),
         roof: extrude(roofShape(), w, 0.03, z),
         deck: (() => {
