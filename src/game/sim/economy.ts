@@ -2,12 +2,13 @@
 import { z } from "zod";
 import { CHALLENGES, evaluateChallenge, rewardFor, type Evaluation, type Grade, GRADE_RANK } from "./challenges";
 import { simulate } from "./engine";
+import { DEFAULT_COSMETICS, type Cosmetics } from "./cosmetics";
 import { clampTune, findPart, getPart, PARTS, SLOT_ORDER, STOCK_BUILD, STOCK_TUNE } from "./parts";
 import type { Build, Tune } from "./types";
 
 export const STARTING_CREDITS = 3000;
 export const SELL_RATE = 0.6;
-export const SAVE_VERSION = 1;
+export const SAVE_VERSION = 2;
 
 export interface GameState {
   version: number;
@@ -19,6 +20,7 @@ export interface GameState {
   /** Key of the build+tune last measured on the dyno; challenges grade that run. */
   lastRunKey: string | null;
   runCount: number;
+  cosmetics: Cosmetics;
 }
 
 export function newGame(): GameState {
@@ -31,7 +33,12 @@ export function newGame(): GameState {
     progress: {},
     lastRunKey: null,
     runCount: 0,
+    cosmetics: { ...DEFAULT_COSMETICS },
   };
+}
+
+export function setCosmetics(state: GameState, c: Partial<Cosmetics>): GameState {
+  return { ...state, cosmetics: { ...state.cosmetics, ...c } };
 }
 
 export function configKey(build: Build, tune: Tune): string {
@@ -111,15 +118,28 @@ export function submitChallenge(state: GameState, challengeId: string): SubmitOu
 }
 
 const gradeSchema = z.enum(["bronze", "silver", "gold"]);
+const hex = z.string().regex(/^#[0-9a-f]{6}$/i);
+const cosmeticsSchema = z.object({
+  paint: hex,
+  finish: z.enum(["gloss", "metallic", "pearl", "satin", "matte"]),
+  rimStyle: z.enum(["five", "mesh", "dish", "turbine"]),
+  rimColor: hex,
+  caliper: hex,
+  stripe: z.enum(["none", "twin", "center", "side"]),
+  stripeColor: hex,
+  tint: z.number().min(0).max(1),
+});
+// Accepts v1 saves (7 engine slots, no cosmetics) and migrates them on load.
 const saveSchema = z.object({
-  version: z.literal(SAVE_VERSION),
+  version: z.union([z.literal(1), z.literal(SAVE_VERSION)]),
   credits: z.number().finite().min(0),
   owned: z.array(z.string()),
-  build: z.object(Object.fromEntries(SLOT_ORDER.map((s) => [s, z.string()])) as Record<keyof Build, z.ZodString>),
+  build: z.record(z.string()),
   tune: z.object({ boostTarget: z.number(), afrTarget: z.number(), timingOffset: z.number(), revLimit: z.number() }),
   progress: z.record(gradeSchema),
   lastRunKey: z.string().nullable(),
   runCount: z.number().int().min(0),
+  cosmetics: z.unknown().optional(),
 });
 
 export function serialize(state: GameState): string {
@@ -134,14 +154,30 @@ export function deserialize(raw: string | null): GameState {
     const owned = Array.from(new Set([...newGame().owned, ...parsed.owned.filter((id) => findPart(id))]));
     const build = { ...STOCK_BUILD };
     for (const s of SLOT_ORDER) {
+      const id = parsed.build[s];
+      if (!id) continue; // slot added after this save was written
       try {
-        getPart(s, parsed.build[s]);
-        if (owned.includes(parsed.build[s])) build[s] = parsed.build[s];
+        getPart(s, id);
+        if (owned.includes(id)) build[s] = id;
       } catch {
         /* keep stock part */
       }
     }
-    return { ...parsed, owned, build, tune: clampTune(build, parsed.tune) };
+    const cos = cosmeticsSchema.safeParse(parsed.cosmetics);
+    const tune = clampTune(build, parsed.tune);
+    // A run key from an older save no longer matches the current key format.
+    const lastRunKey = parsed.lastRunKey === configKey(build, tune) ? parsed.lastRunKey : null;
+    return {
+      version: SAVE_VERSION,
+      credits: parsed.credits,
+      owned,
+      build,
+      tune,
+      progress: parsed.progress,
+      lastRunKey,
+      runCount: parsed.runCount,
+      cosmetics: cos.success ? cos.data : { ...DEFAULT_COSMETICS },
+    };
   } catch {
     return newGame();
   }

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { CHALLENGES, evaluateChallenge, rewardFor } from "./challenges";
 import { simulate } from "./engine";
-import { buyPart, configKey, deserialize, installPart, newGame, recordDynoRun, sellPart, serialize, setTune, STARTING_CREDITS, submitChallenge, type GameState } from "./economy";
+import { buyPart, configKey, deserialize, installPart, newGame, recordDynoRun, sellPart, serialize, setCosmetics, setTune, STARTING_CREDITS, submitChallenge, type GameState } from "./economy";
 import { findPart, STOCK_BUILD, STOCK_TUNE } from "./parts";
 import type { Build, Tune } from "./types";
 
@@ -115,5 +115,41 @@ describe("economy and saves", () => {
     expect(deserialize("{bad json")).toEqual(newGame());
     expect(deserialize(null)).toEqual(newGame());
     expect(configKey(g.build, g.tune)).toBe(g.lastRunKey);
+  });
+
+  it("a version 1 save keeps credits, parts and grades and gains the new slots as stock", () => {
+    const v1 = {
+      version: 1,
+      credits: 4200,
+      owned: ["intake-stock", "cam-stock", "turbo-none", "ic-none", "inj-stock", "exh-stock", "ecu-stock", "intake-cai"],
+      build: { intake: "intake-cai", camshaft: "cam-stock", turbo: "turbo-none", intercooler: "ic-none", injectors: "inj-stock", exhaust: "exh-stock", ecu: "ecu-stock" },
+      tune: STOCK_TUNE,
+      progress: { c1: "gold" },
+      lastRunKey: "old|key",
+      runCount: 3,
+    };
+    const g = deserialize(JSON.stringify(v1));
+    expect(g.version).toBe(2);
+    expect(g.credits).toBe(4200);
+    expect(g.progress).toEqual({ c1: "gold" });
+    expect(g.build.intake).toBe("intake-cai");
+    expect(g.build.fuel).toBe("fuel-95");
+    expect(g.build.internals).toBe("int-stock");
+    expect(g.build.cooling).toBe("cool-stock");
+    expect(g.owned).toContain("fuel-95");
+    expect(g.cosmetics.paint).toBe("#9e3b1a");
+    expect(g.lastRunKey).toBeNull();
+  });
+
+  it("paint choices persist through a save and invalid colours are rejected", () => {
+    const g = setCosmetics(newGame(), { paint: "#16264a", finish: "matte", rimStyle: "dish" });
+    const back = deserialize(serialize(g));
+    expect(back.cosmetics.paint).toBe("#16264a");
+    expect(back.cosmetics.finish).toBe("matte");
+    expect(back.cosmetics.rimStyle).toBe("dish");
+    const bad = JSON.parse(serialize(g));
+    bad.cosmetics.paint = "red";
+    expect(deserialize(JSON.stringify(bad)).cosmetics.paint).toBe("#9e3b1a");
+    expect(deserialize(JSON.stringify(bad)).credits).toBe(g.credits);
   });
 });
