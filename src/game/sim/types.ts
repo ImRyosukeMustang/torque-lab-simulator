@@ -1,6 +1,6 @@
 // Pure data types for the AUTOMECH simulation. No React, no three.js.
 
-export type SlotId = "intake" | "camshaft" | "turbo" | "intercooler" | "injectors" | "exhaust" | "ecu";
+export type SlotId = "intake" | "camshaft" | "turbo" | "intercooler" | "injectors" | "fuel" | "exhaust" | "internals" | "cooling" | "ecu";
 
 interface PartBase {
   id: string;
@@ -66,6 +66,36 @@ export interface ExhaustPart extends PartBase {
   spoolAssist: number;
 }
 
+export interface FuelPart extends PartBase {
+  slot: "fuel";
+  /** Research octane number; higher resists knock. */
+  octane: number;
+  /** Stoichiometric AFR of the fuel (gasoline 14.7, E85 ~9.8). */
+  stoichAfr: number;
+  /** Evaporative charge cooling (K) at full load. */
+  chargeCoolingK: number;
+  /** Change in exhaust gas temperature (°C) from burn speed / composition. */
+  egtOffsetC: number;
+}
+
+export interface InternalsPart extends PartBase {
+  slot: "internals";
+  /** Static compression ratio set by the piston crown. */
+  compression: number;
+  /** BMEP the pistons and rods tolerate continuously (bar). */
+  bmepLimit: number;
+  /** Extra friction from ring pack / heavier parts (bar FMEP). */
+  frictionBar: number;
+}
+
+export interface CoolingPart extends PartBase {
+  slot: "cooling";
+  /** Heat the cooling system can reject (kW). */
+  capacityKw: number;
+  /** Intake heat soak from under-bonnet temperature (K). */
+  heatSoakK: number;
+}
+
 export interface EcuPart extends PartBase {
   slot: "ecu";
   /** Tuning access limits. */
@@ -81,7 +111,10 @@ export type Part =
   | TurboPart
   | IntercoolerPart
   | InjectorPart
+  | FuelPart
   | ExhaustPart
+  | InternalsPart
+  | CoolingPart
   | EcuPart;
 
 export interface PartBySlot {
@@ -90,7 +123,10 @@ export interface PartBySlot {
   turbo: TurboPart;
   intercooler: IntercoolerPart;
   injectors: InjectorPart;
+  fuel: FuelPart;
   exhaust: ExhaustPart;
+  internals: InternalsPart;
+  cooling: CoolingPart;
   ecu: EcuPart;
 }
 
@@ -100,7 +136,7 @@ export type Build = { [K in SlotId]: string };
 export interface Tune {
   /** Boost target (bar gauge). Ignored without a turbo. */
   boostTarget: number;
-  /** Wide-open-throttle AFR target. */
+  /** Wide-open-throttle AFR target, gasoline-equivalent (lambda x 14.7). */
   afrTarget: number;
   /** Ignition advance offset from the base map (degrees). */
   timingOffset: number;
@@ -114,11 +150,6 @@ export interface EngineSpec {
   cylinders: number;
   boreMm: number;
   strokeMm: number;
-  compression: number;
-  /** BMEP the stock internals tolerate continuously (bar). */
-  internalsBmepLimit: number;
-  /** Heat the stock cooling system can reject (kW). */
-  coolingCapacityKw: number;
   idleRpm: number;
 }
 
@@ -162,4 +193,6 @@ export interface SimResult {
   reliability: number;
   diagnostics: Diagnostic[];
   buildCost: number;
+  /** Estimated power at the wheels after drivetrain losses (chassis dyno reading). */
+  wheelPowerHp: number;
 }
