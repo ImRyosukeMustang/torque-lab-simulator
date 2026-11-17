@@ -4,14 +4,18 @@ import { CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Too
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
+import { engineAudio } from "../audio";
 import { dynoLive } from "../dynoLive";
 import { configKey } from "../sim/economy";
 import { lastPoint, LIMITS, sampleCurve, simulate } from "../sim/engine";
+import { getPart } from "../sim/parts";
 import type { CurvePoint, SimResult } from "../sim/types";
 import { useGame } from "../store";
 import { TunePanel } from "./TunePanel";
 
 const SWEEP_SECONDS = 7;
+const LIMITER_HOLD_MS = 600;
+const COAST_SECONDS = 1.6;
 const RPM_FROM = 1500;
 
 interface ChartRow {
@@ -51,7 +55,7 @@ function buildRows(curve: CurvePoint[], upTo: number, baseline: SimResult | null
     });
 }
 
-function Readout({ label, value, unit, tone }: { label: string; value: string; unit: string; tone?: "warn" | "crit" | undefined }) {
+function Readout({ label, value, unit, tone, sub }: { label: string; value: string; unit: string; tone?: "warn" | "crit" | undefined; sub?: string }) {
   return (
     <div className="rounded-md border border-border bg-card px-3 py-2">
       <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{label}</div>
@@ -59,6 +63,7 @@ function Readout({ label, value, unit, tone }: { label: string; value: string; u
         {value}
         <span className="ml-1 text-xs text-muted-foreground">{unit}</span>
       </div>
+      {sub && <div className="mt-0.5 font-mono text-[10px] text-muted-foreground">{sub}</div>}
     </div>
   );
 }
@@ -93,10 +98,12 @@ export function DynoPanel() {
   const lastResult = useGame((s) => s.lastResult);
   const baseline = useGame((s) => s.baseline);
   const completeDynoRun = useGame((s) => s.completeDynoRun);
+  const setDynoRunning = useGame((s) => s.setDynoRunning);
   const [running, setRunning] = useState(false);
   const [rpm, setRpm] = useState(0);
   const [live, setLive] = useState<{ result: SimResult; upTo: number } | null>(null);
   const raf = useRef(0);
+  const holdTimer = useRef(0);
 
   const fresh = game.lastRunKey === configKey(game.build, game.tune) && lastResult;
   const shown: SimResult | null = live?.result ?? (fresh ? lastResult : null);
@@ -106,18 +113,47 @@ export function DynoPanel() {
   useEffect(
     () => () => {
       cancelAnimationFrame(raf.current);
+      window.clearTimeout(holdTimer.current);
       dynoLive.running = false;
+      dynoLive.pop = 0;
+      engineAudio.kill();
+      useGame.getState().setDynoRunning(false);
     },
     [],
   );
 
+  /** Let the rollers and the sound wind down after a pull (visual only). */
+  const coast = (fromRpm: number) => {
+    const t0 = performance.now();
+    const idle = 900;
+    const step = (now: number) => {
+      const t = Math.min(1, (now - t0) / 1000 / COAST_SECONDS);
+      const e = 1 - (1 - t) * (1 - t);
+      dynoLive.rpm = fromRpm + (idle - fromRpm) * e;
+      dynoLive.load = 0.05;
+      dynoLive.boostBar *= 0.9;
+      dynoLive.egtC += (450 - dynoLive.egtC) * 0.03;
+      if (t < 1) raf.current = requestAnimationFrame(step);
+      else dynoLive.running = false;
+    };
+    raf.current = requestAnimationFrame(step);
+  };
+
   const start = () => {
+    cancelAnimationFrame(raf.current);
+    window.clearTimeout(holdTimer.current);
     const result = simulate(game.build, game.tune);
     const end = lastPoint(result.curve).rpm;
+    const exhaust = getPart("exhaust", game.build.exhaust);
+    const hasTurbo = getPart("turbo", game.build.turbo).maximumFlow > 0;
+    const { sound, volume } = useGame.getState().settings;
+    if (sound) engineAudio.start({ volume, exhaustOpen: Math.min(1, Math.max(0, (exhaust.flowCapacity - 0.17) / 0.33)), turbo: hasTurbo });
     const t0 = performance.now();
     let lastUi = 0;
     setRunning(true);
+    setDynoRunning(true);
     dynoLive.running = true;
+    dynoLive.pop = 0;
     const tick = (now: number) => {
       const t = Math.min(1, (now - t0) / 1000 / SWEEP_SECONDS);
       const r = RPM_FROM + (end - RPM_FROM) * t;
@@ -126,6 +162,7 @@ export function DynoPanel() {
       dynoLive.egtC = p.egtC;
       dynoLive.boostBar = p.boostBar;
       dynoLive.load = Math.min(1, p.bmepBar / 20);
+      engineAudio.update(r, dynoLive.load, p.boostBar);
       if (now - lastUi > 60 || t >= 1) {
         lastUi = now;
         setRpm(r);
@@ -134,22 +171,33 @@ export function DynoPanel() {
       if (t < 1) {
         raf.current = requestAnimationFrame(tick);
       } else {
-        // Hold briefly at the limiter, then coast down.
-        window.setTimeout(() => {
-          dynoLive.running = false;
+        // Bounce off the limiter, then lift and coast down.
+        const pops = exhaust.id !== "exh-stock";
+        dynoLive.pop = pops ? 1 : 0.15;
+        engineAudio.limiter(LIMITER_HOLD_MS / 1000, pops);
+        holdTimer.current = window.setTimeout(() => {
+          dynoLive.pop = 0;
+          engineAudio.stop(hasTurbo && result.peakBoostBar > 0.3);
           setRunning(false);
+          setDynoRunning(false);
           setLive(null);
           completeDynoRun();
-        }, 350);
+          coast(end);
+        }, LIMITER_HOLD_MS);
       }
     };
     raf.current = requestAnimationFrame(tick);
   };
 
   const stop = () => {
+    // Aborting never records a run, even during the limiter hold.
     cancelAnimationFrame(raf.current);
+    window.clearTimeout(holdTimer.current);
     dynoLive.running = false;
+    dynoLive.pop = 0;
+    engineAudio.stop(false);
     setRunning(false);
+    setDynoRunning(false);
     setLive(null);
   };
 
@@ -174,7 +222,7 @@ export function DynoPanel() {
         )}
       </div>
 
-      <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6">
         {cur ? (
           <>
             <Readout label="RPM" value={Math.round(cur.rpm).toLocaleString("en-US")} unit="" />
@@ -186,7 +234,7 @@ export function DynoPanel() {
           </>
         ) : shown ? (
           <>
-            <Readout label="Peak power" value={shown.peakPowerHp.toFixed(0)} unit={`hp @${shown.peakPowerRpm}`} />
+            <Readout label="Peak power" value={shown.peakPowerHp.toFixed(0)} unit={`hp @${shown.peakPowerRpm}`} sub={`≈ ${shown.wheelPowerHp.toFixed(0)} whp at the rollers`} />
             <Readout label="Peak torque" value={shown.peakTorqueNm.toFixed(0)} unit={`Nm @${shown.peakTorqueRpm}`} />
             <Readout label="Peak boost" value={shown.peakBoostBar.toFixed(2)} unit="bar" />
             <Readout label="AFR range" value={shown.minAfr === shown.maxAfr ? `${shown.minAfr}` : `${shown.minAfr}–${shown.maxAfr}`} unit=":1" />
@@ -246,6 +294,9 @@ export function DynoPanel() {
             <div><span className="text-muted-foreground">Thermal load </span>{Math.round(shown.thermalLoad * 100)}%</div>
             <div><span className="text-muted-foreground">Build cost </span>{shown.buildCost.toLocaleString("en-US")} cr</div>
             <div><span className="text-muted-foreground">Rev limit </span>{lastPoint(shown.curve).rpm}</div>
+            <div><span className="text-muted-foreground">Wheel power </span>≈ {shown.wheelPowerHp} whp</div>
+            <div><span className="text-muted-foreground">Fuel </span>{getPart("fuel", game.build.fuel).name}</div>
+            <div><span className="text-muted-foreground">Compression </span>{getPart("internals", game.build.internals).compression}:1</div>
           </div>
           <ul className="space-y-1.5">
             {shown.diagnostics.map((d) => {
