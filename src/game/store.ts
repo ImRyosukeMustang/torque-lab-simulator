@@ -24,7 +24,7 @@ export interface Settings {
   sound: boolean;
   volume: number;
 }
-export type CameraView = "exterior" | "bay" | "dyno" | SlotId;
+export type CameraView = "exterior" | "bay" | "dyno" | "paint" | SlotId;
 
 const SAVE_KEY = "automech.save.v1";
 const SETTINGS_KEY = "automech.settings.v1";
@@ -131,7 +131,7 @@ export const useGame = create<Store>((set, get) => {
     setTab: (tab) => {
       if (get().dynoRunning && tab !== "dyno") return;
       if (tab === "paint") {
-        set({ tab, view: "exterior", hoodOpen: false });
+        set({ tab, view: "paint", hoodOpen: false });
         return;
       }
       const cur = get().view;
@@ -142,7 +142,7 @@ export const useGame = create<Store>((set, get) => {
       if (get().dynoRunning) return;
       set(focus ? { selectedSlot, view: selectedSlot, hoodOpen: true, tab: "workshop" } : { selectedSlot });
     },
-    setView: (view) => set({ view, hoodOpen: view === "exterior" ? get().hoodOpen : true }),
+    setView: (view) => set({ view, hoodOpen: view === "exterior" ? get().hoodOpen : view === "paint" ? false : true }),
     setHoodOpen: (hoodOpen) => set({ hoodOpen }),
     setHovered: (hoveredSlot) => set({ hoveredSlot }),
     buy: (id) => commit(buyPart(get().game, id)),
