@@ -39,3 +39,6 @@ use the editor.
 - The save is versioned JSON in localStorage (`automech.save.v1`) validated by zod in `sim/economy.ts`; bump `SAVE_VERSION` and migrate when the shape changes.
 - The game route renders with `ssr: false` because the whole screen is a WebGL canvas; the scene sets `data-scene-ready` after its first frames for headless checks.
 - The coupe and engine bay are procedural (extruded profiles) so the bonnet opens and each component can be swapped and clicked; component meshes are grouped per slot via `SlotGroup` in `scene/EngineBay.tsx`.
+- Tunes store a lambda target, never AFR: AFR is derived per fitted fuel (lambda × stoich) so the same calibration means the same mixture on every fuel; combustion energy comes from delivered/burnable fuel mass × the fuel's LHV.
+- Every non-info `Diagnostic` must carry `cause` (why, with the measured numbers) and `fixes` (concrete changes); a test enforces this.
+- Graphics quality (`settings.quality`, stored apart from the save) gates DPR, shadows and post-processing; with post-processing on, renderer tone mapping is off and ACES runs last in the effect chain after bloom.

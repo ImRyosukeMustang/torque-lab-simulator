@@ -22,12 +22,14 @@ export function partSpecs(p: Part): [string, string][] {
         ["Max flow", `${Math.round(p.maximumFlow * 1000)} g/s`],
         ["Inertia", p.inertia.toFixed(1)],
         ["Max boost", `${p.maximumBoost} bar`],
+        ["Efficiency island", `${Math.round(p.islandFlow * p.maximumFlow * 1000)} g/s @ PR ${p.islandPr}`],
       ];
     case "intercooler":
       if (p.effectiveness === 0) return [["Effectiveness", "—"]];
       return [
-        ["Effectiveness", `${Math.round(p.effectiveness * 100)}%`],
-        ["Pressure drop", `${p.pressureDrop} bar`],
+        ["Effectiveness", `${Math.round(p.effectiveness * 100)}% @ 250 g/s`],
+        ["Pressure drop", `${p.pressureDrop} bar @ 250 g/s`],
+        ["Cooled by", p.sinkOffsetK > 0 ? `Coolant (+${p.sinkOffsetK} °C)` : "Ambient air"],
       ];
     case "injectors":
       return [
@@ -38,7 +40,8 @@ export function partSpecs(p: Part): [string, string][] {
       return [
         ["Octane", `${p.octane} RON`],
         ["Stoich AFR", `${p.stoichAfr}:1`],
-        ["Charge cooling", p.chargeCoolingK ? `−${p.chargeCoolingK} °C` : "—"],
+        ["Energy (LHV)", `${p.lhvMjKg} MJ/kg`],
+        ["Latent heat", `${p.latentHeatKjKg} kJ/kg`],
       ];
     case "internals":
       return [
@@ -59,7 +62,7 @@ export function partSpecs(p: Part): [string, string][] {
       return [
         ["Boost", `≤ ${p.maxBoostTarget} bar`],
         ["Timing", p.timingRange ? `±${p.timingRange}°` : "Locked"],
-        ["AFR", p.afrRange[0] === p.afrRange[1] ? "Locked" : `${p.afrRange[0]}–${p.afrRange[1]}`],
+        ["Lambda", p.lambdaRange[0] === p.lambdaRange[1] ? `Locked λ ${p.lambdaRange[0].toFixed(2)}` : `λ ${p.lambdaRange[0].toFixed(2)}–${p.lambdaRange[1].toFixed(2)}`],
         ["Rev limit", p.revLimitRange[0] === p.revLimitRange[1] ? `${p.revLimitRange[0]}` : `${p.revLimitRange[0]}–${p.revLimitRange[1]}`],
       ];
   }

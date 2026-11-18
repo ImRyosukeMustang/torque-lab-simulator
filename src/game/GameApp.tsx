@@ -5,6 +5,7 @@ import { GameCanvas } from "./scene/GameCanvas";
 import { useGame } from "./store";
 import { CareerPanel } from "./ui/CareerPanel";
 import { DynoPanel } from "./ui/DynoPanel";
+import { PaintPanel } from "./ui/PaintPanel";
 import { TopBar } from "./ui/TopBar";
 import { ViewportOverlay } from "./ui/ViewportOverlay";
 import { WorkshopPanel } from "./ui/WorkshopPanel";
@@ -31,7 +32,7 @@ export function GameApp() {
             tab === "dyno" ? "lg:w-[min(720px,52vw)]" : "lg:w-[420px]",
           )}
         >
-          {loaded && (tab === "workshop" ? <WorkshopPanel /> : tab === "dyno" ? <DynoPanel /> : <CareerPanel />)}
+          {loaded && (tab === "workshop" ? <WorkshopPanel /> : tab === "dyno" ? <DynoPanel /> : tab === "paint" ? <PaintPanel /> : <CareerPanel />)}
         </aside>
       </main>
       <Toaster position="top-center" theme="dark" />

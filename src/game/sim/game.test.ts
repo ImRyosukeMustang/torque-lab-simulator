@@ -10,12 +10,12 @@ const ch = (id: string) => CHALLENGES.find((c) => c.id === id)!;
 // One known solution per challenge; each must pass and the stock car must fail.
 const SOLUTIONS: Record<string, { build: Partial<Build>; tune: Partial<Tune> }> = {
   c1: { build: { intake: "intake-cai", exhaust: "exh-catback" }, tune: {} },
-  c2: { build: { intake: "intake-hf", camshaft: "cam-street", exhaust: "exh-catback", ecu: "ecu-piggy" }, tune: { afrTarget: 12.8, timingOffset: 3 } },
-  c3: { build: { intake: "intake-hf", turbo: "turbo-t25", intercooler: "ic-small", injectors: "inj-440", exhaust: "exh-catback", ecu: "ecu-piggy" }, tune: { boostTarget: 1.1, afrTarget: 11.8 } },
-  c4: { build: { intake: "intake-hf", turbo: "turbo-t25", intercooler: "ic-large", injectors: "inj-440", ecu: "ecu-piggy" }, tune: { boostTarget: 1.1, afrTarget: 12.2, timingOffset: 2 } },
-  c6: { build: { intake: "intake-hf", camshaft: "cam-race", exhaust: "exh-header", ecu: "ecu-standalone", internals: "int-hicomp", fuel: "fuel-race" }, tune: { afrTarget: 12.8, timingOffset: 6, revLimit: 8000 } },
-  c7: { build: { intake: "intake-hf", camshaft: "cam-race", turbo: "turbo-t45", intercooler: "ic-w2a", injectors: "inj-1300", exhaust: "exh-header", ecu: "ecu-standalone", fuel: "fuel-e85", internals: "int-race", cooling: "cool-race" }, tune: { boostTarget: 1.5, afrTarget: 11.4, timingOffset: 6, revLimit: 8000 } },
-  c5: { build: { intake: "intake-hf", camshaft: "cam-race", turbo: "turbo-t45", intercooler: "ic-large", injectors: "inj-750", exhaust: "exh-3in", ecu: "ecu-standalone" }, tune: { boostTarget: 0.9, afrTarget: 12.2, timingOffset: 4, revLimit: 8000 } },
+  c2: { build: { intake: "intake-hf", camshaft: "cam-street", exhaust: "exh-catback", ecu: "ecu-piggy" }, tune: { lambdaTarget: 0.87, timingOffset: 3 } },
+  c3: { build: { intake: "intake-hf", turbo: "turbo-t25", intercooler: "ic-small", injectors: "inj-440", exhaust: "exh-catback", ecu: "ecu-piggy" }, tune: { boostTarget: 1.0, lambdaTarget: 0.80 } },
+  c4: { build: { intake: "intake-hf", turbo: "turbo-t25", intercooler: "ic-large", injectors: "inj-440", ecu: "ecu-piggy" }, tune: { boostTarget: 1.0, lambdaTarget: 0.82, timingOffset: 2 } },
+  c6: { build: { intake: "intake-hf", camshaft: "cam-race", exhaust: "exh-header", ecu: "ecu-standalone", internals: "int-hicomp", fuel: "fuel-race" }, tune: { lambdaTarget: 0.87, timingOffset: 6, revLimit: 8000 } },
+  c7: { build: { intake: "intake-hf", camshaft: "cam-race", turbo: "turbo-t45", intercooler: "ic-w2a", injectors: "inj-1300", exhaust: "exh-header", ecu: "ecu-standalone", fuel: "fuel-e85", internals: "int-race", cooling: "cool-race" }, tune: { boostTarget: 1.5, lambdaTarget: 0.78, timingOffset: 6, revLimit: 8000 } },
+  c5: { build: { intake: "intake-hf", camshaft: "cam-race", turbo: "turbo-t45", intercooler: "ic-large", injectors: "inj-750", exhaust: "exh-3in", ecu: "ecu-standalone" }, tune: { boostTarget: 0.85, lambdaTarget: 0.83, timingOffset: 4, revLimit: 8000 } },
 };
 
 describe("challenges", () => {
@@ -129,7 +129,8 @@ describe("economy and saves", () => {
       runCount: 3,
     };
     const g = deserialize(JSON.stringify(v1));
-    expect(g.version).toBe(2);
+    expect(g.version).toBe(3);
+    expect(g.tune.lambdaTarget).toBe(0.85);
     expect(g.credits).toBe(4200);
     expect(g.progress).toEqual({ c1: "gold" });
     expect(g.build.intake).toBe("intake-cai");
@@ -139,6 +140,17 @@ describe("economy and saves", () => {
     expect(g.owned).toContain("fuel-95");
     expect(g.cosmetics.paint).toBe("#9e3b1a");
     expect(g.lastRunKey).toBeNull();
+  });
+
+  it("a version 2 save converts its AFR target to lambda", () => {
+    const v2 = JSON.parse(serialize(newGame()));
+    v2.version = 2;
+    delete v2.tune.lambdaTarget;
+    v2.tune.afrTarget = 12.5;
+    v2.build.ecu = "ecu-stock";
+    const g = deserialize(JSON.stringify(v2));
+    expect(g.tune.lambdaTarget).toBe(0.85);
+    expect(g.credits).toBe(3000);
   });
 
   it("paint choices persist through a save and invalid colours are rejected", () => {

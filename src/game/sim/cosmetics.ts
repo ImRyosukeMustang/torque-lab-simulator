@@ -22,7 +22,7 @@ export const DEFAULT_COSMETICS: Cosmetics = {
   rimColor: "#9ea3a8",
   caliper: "#c58a1c",
   stripe: "none",
-  stripeColor: "#e8e6e1",
+  stripeColor: "#e6e7e3",
   tint: 0.6,
 };
 

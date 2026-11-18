@@ -8,7 +8,7 @@ import type { Build, Tune } from "./types";
 
 export const STARTING_CREDITS = 3000;
 export const SELL_RATE = 0.6;
-export const SAVE_VERSION = 2;
+export const SAVE_VERSION = 3;
 
 export interface GameState {
   version: number;
@@ -43,7 +43,7 @@ export function setCosmetics(state: GameState, c: Partial<Cosmetics>): GameState
 
 export function configKey(build: Build, tune: Tune): string {
   const t = clampTune(build, tune);
-  return [...SLOT_ORDER.map((s) => build[s]), t.boostTarget.toFixed(2), t.afrTarget.toFixed(1), t.timingOffset, t.revLimit].join("|");
+  return [...SLOT_ORDER.map((s) => build[s]), t.boostTarget.toFixed(2), t.lambdaTarget.toFixed(2), t.timingOffset, t.revLimit].join("|");
 }
 
 export type PurchaseBlock = "owned" | "locked" | "credits" | null;
@@ -129,13 +129,20 @@ const cosmeticsSchema = z.object({
   stripeColor: hex,
   tint: z.number().min(0).max(1),
 });
-// Accepts v1 saves (7 engine slots, no cosmetics) and migrates them on load.
+// Accepts v1 saves (7 engine slots, no cosmetics) and v2 saves (AFR tune) and migrates them on load.
+const tuneSchema = z.union([
+  z.object({ boostTarget: z.number(), lambdaTarget: z.number(), timingOffset: z.number(), revLimit: z.number() }),
+  // v1/v2 stored a gasoline-equivalent AFR target; lambda = AFR / 14.7.
+  z
+    .object({ boostTarget: z.number(), afrTarget: z.number(), timingOffset: z.number(), revLimit: z.number() })
+    .transform(({ afrTarget, ...t }) => ({ ...t, lambdaTarget: Math.round((afrTarget / 14.7) * 100) / 100 })),
+]);
 const saveSchema = z.object({
-  version: z.union([z.literal(1), z.literal(SAVE_VERSION)]),
+  version: z.union([z.literal(1), z.literal(2), z.literal(SAVE_VERSION)]),
   credits: z.number().finite().min(0),
   owned: z.array(z.string()),
   build: z.record(z.string()),
-  tune: z.object({ boostTarget: z.number(), afrTarget: z.number(), timingOffset: z.number(), revLimit: z.number() }),
+  tune: tuneSchema,
   progress: z.record(gradeSchema),
   lastRunKey: z.string().nullable(),
   runCount: z.number().int().min(0),

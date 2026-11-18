@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { simulate } from "./engine";
+import { burnFactor, compressorEfficiency, intercoolerEffectiveness, simulate } from "./engine";
 import { STOCK_BUILD, STOCK_TUNE, buildCost } from "./parts";
 import type { Build, Tune } from "./types";
 
@@ -36,7 +36,7 @@ describe("engine simulation", () => {
 
   it("a turbo raises boost, power and EGT rather than adding a fixed bonus", () => {
     const na = simulate(STOCK_BUILD, STOCK_TUNE);
-    const t = simulate(B({ turbo: "turbo-t25", ecu: "ecu-piggy", injectors: "inj-440", intercooler: "ic-small" }), T({ boostTarget: 1.0, afrTarget: 11.8 }));
+    const t = simulate(B({ turbo: "turbo-t25", ecu: "ecu-piggy", injectors: "inj-440", intercooler: "ic-small" }), T({ boostTarget: 1.0, lambdaTarget: 0.80 }));
     expect(t.peakBoostBar).toBeGreaterThan(0.9);
     expect(t.peakPowerHp).toBeGreaterThan(na.peakPowerHp * 1.4);
     expect(t.peakEgtC).toBeGreaterThan(na.peakEgtC);
@@ -44,7 +44,7 @@ describe("engine simulation", () => {
 
   it("a bigger turbo spools later", () => {
     const base = { ecu: "ecu-standalone", injectors: "inj-1000", intercooler: "ic-large" } as const;
-    const tune = T({ boostTarget: 1.0, afrTarget: 11.8 });
+    const tune = T({ boostTarget: 1.0, lambdaTarget: 0.80 });
     const small = simulate(B({ ...base, turbo: "turbo-t25" }), tune);
     const big = simulate(B({ ...base, turbo: "turbo-t45" }), tune);
     const boostAt = (r: typeof small, rpm: number) => r.curve.find((p) => p.rpm === rpm)!.boostBar;
@@ -52,7 +52,7 @@ describe("engine simulation", () => {
   });
 
   it("stock injectors on a boosted engine run out of fuel and hurt reliability", () => {
-    const tune = T({ boostTarget: 1.1, afrTarget: 11.8 });
+    const tune = T({ boostTarget: 1.1, lambdaTarget: 0.80 });
     const base = { turbo: "turbo-t35", ecu: "ecu-piggy", intercooler: "ic-small", intake: "intake-hf", exhaust: "exh-3in" } as const;
     const stockInj = simulate(B({ ...base }), tune);
     const bigInj = simulate(B({ ...base, injectors: "inj-750" }), tune);
@@ -61,7 +61,7 @@ describe("engine simulation", () => {
   });
 
   it("no intercooler at 1 bar causes detonation", () => {
-    const r = simulate(B({ turbo: "turbo-t25", ecu: "ecu-piggy", injectors: "inj-440" }), T({ boostTarget: 1.0, afrTarget: 11.8 }));
+    const r = simulate(B({ turbo: "turbo-t25", ecu: "ecu-piggy", injectors: "inj-440" }), T({ boostTarget: 1.0, lambdaTarget: 0.80 }));
     expect(r.diagnostics.some((d) => d.code === "KNOCK")).toBe(true);
   });
 
@@ -72,7 +72,7 @@ describe("engine simulation", () => {
   });
 
   it("the stock ECU locks the tune", () => {
-    const r = simulate(STOCK_BUILD, T({ timingOffset: 6, revLimit: 8000, afrTarget: 11 }));
+    const r = simulate(STOCK_BUILD, T({ timingOffset: 6, revLimit: 8000, lambdaTarget: 0.75 }));
     expect(r.curve.at(-1)!.rpm).toBe(7000);
     expect(r).toEqual(simulate(STOCK_BUILD, STOCK_TUNE));
   });
@@ -86,7 +86,7 @@ describe("engine simulation", () => {
   const maxDuty = (r: ReturnType<typeof simulate>) => Math.max(...r.curve.map((p) => p.injectorDuty));
 
   it("E85 adds knock margin but needs more injector flow than gasoline", () => {
-    const tune = T({ boostTarget: 1.2, afrTarget: 11.8 });
+    const tune = T({ boostTarget: 1.2, lambdaTarget: 0.80 });
     const gas = simulate(B({ ...boosted }), tune);
     const e85 = simulate(B({ ...boosted, fuel: "fuel-e85" }), tune);
     expect(minKnock(e85)).toBeGreaterThan(minKnock(gas) + 0.5);
@@ -94,14 +94,14 @@ describe("engine simulation", () => {
   });
 
   it("higher octane fuel adds knock margin", () => {
-    const tune = T({ boostTarget: 1.0, afrTarget: 11.8 });
+    const tune = T({ boostTarget: 1.0, lambdaTarget: 0.80 });
     const r95 = simulate(B({ ...boosted }), tune);
     const r98 = simulate(B({ ...boosted, fuel: "fuel-98" }), tune);
     expect(minKnock(r98)).toBeGreaterThan(minKnock(r95));
   });
 
   it("forged internals survive cylinder pressure that breaks the stock pistons", () => {
-    const tune = T({ boostTarget: 1.4, afrTarget: 11.4, timingOffset: 3, revLimit: 8000 });
+    const tune = T({ boostTarget: 1.4, lambdaTarget: 0.78, timingOffset: 3, revLimit: 8000 });
     const b = { ...boosted, fuel: "fuel-e85", injectors: "inj-1300", cooling: "cool-race" } as const;
     const cast = simulate(B(b), tune);
     const forged = simulate(B({ ...b, internals: "int-race" }), tune);
@@ -112,14 +112,14 @@ describe("engine simulation", () => {
 
   it("high compression makes more NA power but less knock margin", () => {
     const na = { intake: "intake-hf", camshaft: "cam-street", exhaust: "exh-3in", ecu: "ecu-piggy" } as const;
-    const lo = simulate(B({ ...na }), T({ afrTarget: 12.8 }));
-    const hi = simulate(B({ ...na, internals: "int-hicomp" }), T({ afrTarget: 12.8 }));
+    const lo = simulate(B({ ...na }), T({ lambdaTarget: 0.87 }));
+    const hi = simulate(B({ ...na, internals: "int-hicomp" }), T({ lambdaTarget: 0.87 }));
     expect(hi.peakPowerHp).toBeGreaterThan(lo.peakPowerHp);
     expect(minKnock(hi)).toBeLessThan(minKnock(lo));
   });
 
   it("a bigger radiator lowers thermal load", () => {
-    const tune = T({ boostTarget: 1.2, afrTarget: 11.8 });
+    const tune = T({ boostTarget: 1.2, lambdaTarget: 0.80 });
     const stock = simulate(B({ ...boosted }), tune);
     const race = simulate(B({ ...boosted, cooling: "cool-race" }), tune);
     expect(race.thermalLoad).toBeLessThan(stock.thermalLoad * 0.7);
@@ -128,5 +128,63 @@ describe("engine simulation", () => {
   it("wheel power is about 14% below crank power", () => {
     const r = simulate(STOCK_BUILD, STOCK_TUNE);
     expect(r.wheelPowerHp).toBeCloseTo(r.peakPowerHp * 0.86, 0);
+  });
+
+  it("lambda means the same thing on every fuel: E85 at λ 0.80 runs a 7.8:1 AFR, gasoline 11.8:1", () => {
+    const b = { ...boosted, injectors: "inj-1300" } as const;
+    const tune = T({ boostTarget: 1.0, lambdaTarget: 0.8 });
+    const gas = simulate(B(b), tune).curve.at(-1)!;
+    const e85 = simulate(B({ ...b, fuel: "fuel-e85" }), tune).curve.at(-1)!;
+    expect(gas.lambda).toBeCloseTo(0.8, 2);
+    expect(e85.lambda).toBeCloseTo(0.8, 2);
+    expect(gas.afr).toBeCloseTo(11.76, 1);
+    expect(e85.afr).toBeCloseTo(7.84, 1);
+    // ~50% more fuel mass for the same air
+    expect(e85.fuelFlowGs / e85.airFlowKgS).toBeGreaterThan((gas.fuelFlowGs / gas.airFlowKgS) * 1.45);
+  });
+
+  it("energy comes from delivered fuel: an injector-limited build goes lean, gains nothing and loses reliability", () => {
+    const tune = T({ boostTarget: 1.1, lambdaTarget: 0.8 });
+    const base = { turbo: "turbo-t35", ecu: "ecu-piggy", intercooler: "ic-small", intake: "intake-hf", exhaust: "exh-3in" } as const;
+    const starvedR = simulate(B(base), tune);
+    const fedR = simulate(B({ ...base, injectors: "inj-750" }), tune);
+    const starved = starvedR.curve.at(-1)!;
+    const fed = fedR.curve.at(-1)!;
+    expect(starved.lambda).toBeGreaterThan(0.95);
+    expect(starved.fuelFlowGs).toBeLessThan(fed.fuelFlowGs * 0.85);
+    expect(starved.powerHp).toBeLessThan(fed.powerHp);
+    expect(starvedR.diagnostics.some((d) => d.code === "LEAN")).toBe(true);
+    expect(starvedR.reliability).toBeLessThan(fedR.reliability - 20);
+  });
+
+  it("burn quality peaks slightly rich of stoichiometric", () => {
+    expect(burnFactor(0.87)).toBe(1);
+    expect(burnFactor(1.0)).toBeLessThan(1);
+    expect(burnFactor(0.72)).toBeLessThan(burnFactor(0.8));
+    expect(burnFactor(1.2)).toBeLessThan(burnFactor(1.0));
+  });
+
+  it("compressor efficiency peaks in its island and falls toward choke and surge", () => {
+    const peak = compressorEfficiency(0.76, 0.6, 2.0, 0.6, 2.0);
+    expect(peak).toBeCloseTo(0.76, 3);
+    expect(compressorEfficiency(0.76, 0.6, 2.0, 1.0, 2.0)).toBeLessThan(peak * 0.75);
+    expect(compressorEfficiency(0.76, 0.6, 2.0, 0.15, 2.5)).toBeLessThan(peak * 0.7);
+  });
+
+  it("intercooler effectiveness meets its rating at 250 g/s and drops at higher flow", () => {
+    expect(intercoolerEffectiveness(0.8, 0.25)).toBeCloseTo(0.8, 3);
+    expect(intercoolerEffectiveness(0.8, 0.4)).toBeLessThan(0.77);
+    expect(intercoolerEffectiveness(0.8, 0.1)).toBeGreaterThan(0.85);
+    expect(intercoolerEffectiveness(0, 0.3)).toBe(0);
+  });
+
+  it("every warning explains why it happened and suggests a fix", () => {
+    const r = simulate(B({ turbo: "turbo-t35", ecu: "ecu-piggy", intake: "intake-hf" }), T({ boostTarget: 1.1, timingOffset: 3 }));
+    const problems = r.diagnostics.filter((d) => d.severity !== "info");
+    expect(problems.length).toBeGreaterThan(1);
+    for (const d of problems) {
+      expect(d.cause, d.code).toBeTruthy();
+      expect(d.fixes?.length, d.code).toBeGreaterThan(0);
+    }
   });
 });

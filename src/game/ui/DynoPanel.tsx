@@ -25,7 +25,7 @@ interface ChartRow {
   baseHp?: number;
   baseNm?: number;
   boost?: number;
-  afr?: number;
+  lambda?: number;
   egt?: number;
 }
 
@@ -43,7 +43,7 @@ function buildRows(curve: CurvePoint[], upTo: number, baseline: SimResult | null
         row.hp = Math.round(p.powerHp * 10) / 10;
         row.nm = Math.round(p.torqueNm);
         row.boost = Math.round(p.boostBar * 100) / 100;
-        row.afr = Math.round(p.afr * 10) / 10;
+        row.lambda = Math.round(p.lambda * 100) / 100;
         row.egt = Math.round(p.egtC);
       }
       if (baseline && rpm <= lastPoint(baseline.curve).rpm) {
@@ -55,7 +55,7 @@ function buildRows(curve: CurvePoint[], upTo: number, baseline: SimResult | null
     });
 }
 
-function Readout({ label, value, unit, tone, sub }: { label: string; value: string; unit: string; tone?: "warn" | "crit" | undefined; sub?: string }) {
+function Readout({ label, value, unit, tone, sub }: { label: string; value: string; unit: string; tone?: "warn" | "crit" | undefined; sub?: string | undefined }) {
   return (
     <div className="rounded-md border border-border bg-card px-3 py-2">
       <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{label}</div>
@@ -228,8 +228,8 @@ export function DynoPanel() {
             <Readout label="RPM" value={Math.round(cur.rpm).toLocaleString("en-US")} unit="" />
             <Readout label="Power" value={cur.powerHp.toFixed(0)} unit="hp" />
             <Readout label="Torque" value={cur.torqueNm.toFixed(0)} unit="Nm" />
-            <Readout label="Boost" value={cur.boostBar.toFixed(2)} unit="bar" />
-            <Readout label="AFR" value={cur.afr.toFixed(1)} unit=":1" tone={cur.afr > 13.2 && cur.boostBar > 0.2 ? "crit" : undefined} />
+            <Readout label="Boost" value={cur.boostBar.toFixed(2)} unit="bar" sub={cur.compressorEff > 0 ? `compressor η ${Math.round(cur.compressorEff * 100)}%` : undefined} />
+            <Readout label="Lambda" value={cur.lambda.toFixed(2)} unit="λ" sub={`${cur.afr.toFixed(1)}:1 AFR`} tone={cur.lambda > LIMITS.lambdaLeanBoost && cur.boostBar > 0.2 ? "crit" : undefined} />
             <Readout label="EGT" value={cur.egtC.toFixed(0)} unit="°C" tone={cur.egtC > LIMITS.egtCriticalC ? "crit" : cur.egtC > LIMITS.egtSafeC ? "warn" : undefined} />
           </>
         ) : shown ? (
@@ -237,7 +237,7 @@ export function DynoPanel() {
             <Readout label="Peak power" value={shown.peakPowerHp.toFixed(0)} unit={`hp @${shown.peakPowerRpm}`} sub={`≈ ${shown.wheelPowerHp.toFixed(0)} whp at the rollers`} />
             <Readout label="Peak torque" value={shown.peakTorqueNm.toFixed(0)} unit={`Nm @${shown.peakTorqueRpm}`} />
             <Readout label="Peak boost" value={shown.peakBoostBar.toFixed(2)} unit="bar" />
-            <Readout label="AFR range" value={shown.minAfr === shown.maxAfr ? `${shown.minAfr}` : `${shown.minAfr}–${shown.maxAfr}`} unit=":1" />
+            <Readout label="Lambda range" value={shown.minLambda === shown.maxLambda ? shown.minLambda.toFixed(2) : `${shown.minLambda.toFixed(2)}–${shown.maxLambda.toFixed(2)}`} unit="λ" tone={shown.maxLambda > LIMITS.lambdaLeanBoost && shown.peakBoostBar > 0.2 ? "crit" : undefined} />
             <Readout label="Peak EGT" value={`${shown.peakEgtC}`} unit="°C" tone={shown.peakEgtC > LIMITS.egtCriticalC ? "crit" : shown.peakEgtC > LIMITS.egtSafeC ? "warn" : undefined} />
             <Readout label="Reliability" value={shown.reliability.toFixed(0)} unit="%" tone={shown.reliability < 60 ? "crit" : shown.reliability < 85 ? "warn" : undefined} />
           </>
@@ -276,7 +276,7 @@ export function DynoPanel() {
 
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
         <MiniChart rows={rows} dataKey="boost" color="var(--chart-3)" domain={[0, "auto"]} unit="" maxRpm={maxRpm} label="Boost · bar" />
-        <MiniChart rows={rows} dataKey="afr" color="var(--chart-5)" domain={[10, 15]} unit="" limit={13} maxRpm={maxRpm} label="AFR · :1" />
+        <MiniChart rows={rows} dataKey="lambda" color="var(--chart-5)" domain={[0.7, 1.05]} unit="" limit={LIMITS.lambdaLeanBoost} maxRpm={maxRpm} label="Lambda · λ" />
         <MiniChart rows={rows} dataKey="egt" color="var(--chart-4)" domain={[500, 1050]} unit="" limit={LIMITS.egtSafeC} maxRpm={maxRpm} label="EGT · °C" />
       </div>
 
@@ -290,21 +290,55 @@ export function DynoPanel() {
               </span>
             )}
           </div>
-          <div className="mb-3 grid grid-cols-3 gap-2 font-mono text-xs tabular">
+          <div className="mb-3 grid grid-cols-2 gap-x-3 gap-y-1.5 font-mono text-xs tabular sm:grid-cols-3">
             <div><span className="text-muted-foreground">Thermal load </span>{Math.round(shown.thermalLoad * 100)}%</div>
             <div><span className="text-muted-foreground">Build cost </span>{shown.buildCost.toLocaleString("en-US")} cr</div>
             <div><span className="text-muted-foreground">Rev limit </span>{lastPoint(shown.curve).rpm}</div>
             <div><span className="text-muted-foreground">Wheel power </span>≈ {shown.wheelPowerHp} whp</div>
             <div><span className="text-muted-foreground">Fuel </span>{getPart("fuel", game.build.fuel).name}</div>
             <div><span className="text-muted-foreground">Compression </span>{getPart("internals", game.build.internals).compression}:1</div>
+            {(() => {
+              const pk = shown.curve.reduce((a, b) => (b.powerHp > a.powerHp ? b : a));
+              const hot = Math.max(...shown.curve.map((p) => p.chargeTempC));
+              return (
+                <>
+                  <div><span className="text-muted-foreground">Max charge temp </span>{Math.round(hot)}°C</div>
+                  {pk.compressorEff > 0 && (
+                    <>
+                      <div><span className="text-muted-foreground">Compressor @ peak </span>PR {pk.pressureRatio.toFixed(2)} · η {Math.round(pk.compressorEff * 100)}%</div>
+                      <div><span className="text-muted-foreground">Intercooler @ peak </span>{pk.icEffectiveness > 0 ? `ε ${Math.round(pk.icEffectiveness * 100)}%` : "none"}</div>
+                    </>
+                  )}
+                  <div><span className="text-muted-foreground">Fuel flow @ peak </span>{pk.fuelFlowGs.toFixed(1)} g/s</div>
+                </>
+              );
+            })()}
           </div>
           <ul className="space-y-1.5">
             {shown.diagnostics.map((d) => {
               const Icon = d.code === "OK" ? CheckCircle2 : sevIcon[d.severity];
               return (
-                <li key={d.code} className="flex gap-2 text-xs leading-snug">
+                <li key={d.code} className="flex gap-2 rounded-md border border-border/60 bg-background/40 p-2 text-xs leading-snug">
                   <Icon className={cn("mt-px h-3.5 w-3.5 shrink-0", d.code === "OK" ? "text-success" : sevColor[d.severity])} />
-                  <span>{d.message}</span>
+                  <div className="min-w-0 space-y-1">
+                    <p className="font-medium text-foreground">{d.message}</p>
+                    {d.cause && d.code !== "OK" && (
+                      <p className="text-muted-foreground">
+                        <span className="font-semibold uppercase tracking-wider text-[10px] text-muted-foreground/80">Why · </span>
+                        {d.cause}
+                      </p>
+                    )}
+                    {d.fixes && d.fixes.length > 0 && (
+                      <ul className="space-y-0.5">
+                        {d.fixes.map((f) => (
+                          <li key={f} className="flex gap-1.5 text-foreground/90">
+                            <span className="text-primary">→</span>
+                            {f}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
                 </li>
               );
             })}

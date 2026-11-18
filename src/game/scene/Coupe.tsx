@@ -171,7 +171,8 @@ export function applyPaint(mat: THREE.MeshPhysicalMaterial, flakes: THREE.Textur
   mat.clearcoatRoughness = f.clearcoatRoughness;
   mat.iridescence = f.iridescence;
   mat.iridescenceIOR = 1.4;
-  mat.iridescenceThicknessRange = [180, 520];
+  mat.iridescenceThicknessMinimum = 180;
+  mat.iridescenceThicknessMaximum = 520;
   const wantMap = f.flakes > 0;
   if (wantMap !== Boolean(mat.normalMap)) {
     mat.normalMap = wantMap ? flakes : null;

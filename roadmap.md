@@ -14,12 +14,19 @@
 - [x] New engine systems: fuel (RON 95/98/race/E85), pistons & rods (compression, BMEP limit), cooling (radiators)
 - [x] Extra parts in existing slots (VVT cams, twin-scroll turbo, tubular manifold, chargecooler, 1300cc)
 - [x] Two new contracts using the new systems
-- [ ] Paint Shop screen (car-side colours/finishes/wheels/stripes/tint done and saved; the menu to pick them is not built yet): paint colour + finish, wheel style/colour, calipers, stripes, window tint (saved)
-- [ ] Graphics: post-processing (AO, bloom) and quality setting (car detailing done; effects library installed)
+- [x] Paint Shop screen: paint colour (presets + custom) and finish, wheel style/colour, calipers, stripes, window tint (saved)
+- [x] Graphics: bloom/vignette on High, quality setting (High/Medium/Low), sound mute + volume
 - [x] Synthesised engine/turbo sound on dyno runs, mute toggle; exhaust pops at limiter
 - [x] Wheel-hp estimate in dyno report
 - [x] Bug fixes: abort during limiter hold still recorded run, stuck hover after part swap
 - [x] Save v1 -> v2 migration + tests
+
+## Prototype 0.3: simulation overhaul (done)
+- [x] Combustion energy from delivered fuel mass x fuel LHV; evaporative charge cooling from latent heat
+- [x] Lambda-based tune and readouts across RON 95/98, race fuel and E85 (save v3 migrates AFR saves)
+- [x] Compressor efficiency map (island, surge, choke) and ε-NTU intercooler with density-corrected pressure drop
+- [x] Diagnostics explain cause and suggest fixes
+- [ ] Contracts with client style briefs (waiting on the user's answer)
 
 ## Next (from the development plan)
 - [ ] Visual customisation: bumpers, spoilers with attachment points

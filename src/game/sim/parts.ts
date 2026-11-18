@@ -51,17 +51,17 @@ export const PARTS: Part[] = [
   { id: "cam-race", slot: "camshaft", name: "Race Cams 272° + Springs", description: "High-RPM profile with uprated springs. Soft below 4000 rpm.", price: 2200, durationDeg: 272, liftMm: 11.5, peakVE: 1.05, peakRpm: 6300, spreadLow: 2700, spreadHigh: 3300, valvetrainLimit: 8200, unlockAfter: "c2" },
 
   // Turbo
-  { id: "turbo-none", slot: "turbo", name: "Naturally Aspirated", description: "No forced induction.", price: 0, compressorEfficiency: 0, turbineEfficiency: 0, maximumFlow: 0, inertia: 0, maximumBoost: 0 },
-  { id: "turbo-t25", slot: "turbo", name: "AT-25 Ball Bearing", description: "Small, quick-spooling turbo. Runs out of breath at high flow.", price: 2400, compressorEfficiency: 0.7, turbineEfficiency: 0.68, maximumFlow: 0.2, inertia: 0.6, maximumBoost: 1.1, unlockAfter: "c2" },
-  { id: "turbo-t30", slot: "turbo", name: "AT-30 Twin-Scroll", description: "Divided turbine housing keeps exhaust pulses separate, so it spools sooner than its size suggests.", price: 4300, compressorEfficiency: 0.74, turbineEfficiency: 0.76, maximumFlow: 0.26, inertia: 0.75, maximumBoost: 1.4, unlockAfter: "c3" },
-  { id: "turbo-t35", slot: "turbo", name: "AT-35 Dual Ball", description: "Mid-frame turbo with a broad efficiency island.", price: 3600, compressorEfficiency: 0.74, turbineEfficiency: 0.72, maximumFlow: 0.3, inertia: 1.0, maximumBoost: 1.6, unlockAfter: "c2" },
-  { id: "turbo-t45", slot: "turbo", name: "AT-45 Billet", description: "Large billet-wheel turbo. Huge flow, lazy spool.", price: 5400, compressorEfficiency: 0.77, turbineEfficiency: 0.74, maximumFlow: 0.42, inertia: 1.5, maximumBoost: 2.2, unlockAfter: "c3" },
+  { id: "turbo-none", slot: "turbo", name: "Naturally Aspirated", description: "No forced induction.", price: 0, compressorEfficiency: 0, turbineEfficiency: 0, maximumFlow: 0, inertia: 0, maximumBoost: 0, islandFlow: 0, islandPr: 0 },
+  { id: "turbo-t25", slot: "turbo", name: "AT-25 Ball Bearing", description: "Small, quick-spooling turbo. Runs out of breath at high flow.", price: 2400, compressorEfficiency: 0.7, turbineEfficiency: 0.68, maximumFlow: 0.2, inertia: 0.6, maximumBoost: 1.1, islandFlow: 0.6, islandPr: 1.9, unlockAfter: "c2" },
+  { id: "turbo-t30", slot: "turbo", name: "AT-30 Twin-Scroll", description: "Divided turbine housing keeps exhaust pulses separate, so it spools sooner than its size suggests.", price: 4300, compressorEfficiency: 0.74, turbineEfficiency: 0.76, maximumFlow: 0.26, inertia: 0.75, maximumBoost: 1.4, islandFlow: 0.62, islandPr: 2.1, unlockAfter: "c3" },
+  { id: "turbo-t35", slot: "turbo", name: "AT-35 Dual Ball", description: "Mid-frame turbo with a broad efficiency island.", price: 3600, compressorEfficiency: 0.74, turbineEfficiency: 0.72, maximumFlow: 0.3, inertia: 1.0, maximumBoost: 1.6, islandFlow: 0.6, islandPr: 2.2, unlockAfter: "c2" },
+  { id: "turbo-t45", slot: "turbo", name: "AT-45 Billet", description: "Large billet-wheel turbo. Huge flow, lazy spool.", price: 5400, compressorEfficiency: 0.77, turbineEfficiency: 0.74, maximumFlow: 0.42, inertia: 1.5, maximumBoost: 2.2, islandFlow: 0.62, islandPr: 2.5, unlockAfter: "c3" },
 
   // Intercooler
-  { id: "ic-none", slot: "intercooler", name: "No Intercooler", description: "Compressed air goes straight to the engine.", price: 0, effectiveness: 0, pressureDrop: 0 },
-  { id: "ic-small", slot: "intercooler", name: "Bar & Plate 450mm", description: "Compact front-mount core.", price: 650, effectiveness: 0.62, pressureDrop: 0.06, unlockAfter: "c2" },
-  { id: "ic-large", slot: "intercooler", name: "Bar & Plate 600mm Race", description: "Large core, high effectiveness, slightly more pressure drop.", price: 1300, effectiveness: 0.8, pressureDrop: 0.08, unlockAfter: "c3" },
-  { id: "ic-w2a", slot: "intercooler", name: "Water-to-Air Chargecooler", description: "Liquid-cooled core in the intake tract: short pipework, very effective cooling.", price: 2000, effectiveness: 0.88, pressureDrop: 0.05, unlockAfter: "c4" },
+  { id: "ic-none", slot: "intercooler", name: "No Intercooler", description: "Compressed air goes straight to the engine.", price: 0, effectiveness: 0, pressureDrop: 0, sinkOffsetK: 0 },
+  { id: "ic-small", slot: "intercooler", name: "Bar & Plate 450mm", description: "Compact front-mount core.", price: 650, effectiveness: 0.62, pressureDrop: 0.06, sinkOffsetK: 0, unlockAfter: "c2" },
+  { id: "ic-large", slot: "intercooler", name: "Bar & Plate 600mm Race", description: "Large core, high effectiveness, slightly more pressure drop.", price: 1300, effectiveness: 0.8, pressureDrop: 0.08, sinkOffsetK: 0, unlockAfter: "c3" },
+  { id: "ic-w2a", slot: "intercooler", name: "Water-to-Air Chargecooler", description: "Liquid-cooled core in the intake tract: short pipework, very effective cooling.", price: 2000, effectiveness: 0.88, pressureDrop: 0.05, sinkOffsetK: 8, unlockAfter: "c4" },
 
   // Injectors
   { id: "inj-stock", slot: "injectors", name: "OEM 290cc", description: "Factory injectors sized for the stock engine.", price: 0, flowCc: 290 },
@@ -71,10 +71,10 @@ export const PARTS: Part[] = [
   { id: "inj-1300", slot: "injectors", name: "1300cc + Twin Pumps", description: "Ethanol-rated injectors with twin in-tank pumps for big E85 builds.", price: 1700, flowCc: 1300, unlockAfter: "c4" },
 
   // Fuel
-  { id: "fuel-95", slot: "fuel", name: "Pump 95 RON", description: "Standard unleaded from any forecourt.", price: 0, octane: 95, stoichAfr: 14.7, chargeCoolingK: 0, egtOffsetC: 0 },
-  { id: "fuel-98", slot: "fuel", name: "Premium 98 RON", description: "Higher-octane pump fuel: a little more knock headroom.", price: 250, octane: 98, stoichAfr: 14.7, chargeCoolingK: 0, egtOffsetC: 0 },
-  { id: "fuel-race", slot: "fuel", name: "Race Fuel 102 RON", description: "Leaded race gasoline. Strong knock resistance, slightly cooler burn.", price: 900, octane: 102, stoichAfr: 14.7, chargeCoolingK: 3, egtOffsetC: -10, unlockAfter: "c3" },
-  { id: "fuel-e85", slot: "fuel", name: "E85 Ethanol Conversion", description: "Flex sensor, ethanol-safe lines and E85. Huge knock resistance and charge cooling, but needs about 45% more injector flow.", price: 1400, octane: 105, stoichAfr: 9.8, chargeCoolingK: 16, egtOffsetC: -45, unlockAfter: "c3" },
+  { id: "fuel-95", slot: "fuel", name: "Pump 95 RON", description: "Standard unleaded from any forecourt.", price: 0, octane: 95, stoichAfr: 14.7, lhvMjKg: 43.4, latentHeatKjKg: 350, egtOffsetC: 0 },
+  { id: "fuel-98", slot: "fuel", name: "Premium 98 RON", description: "Higher-octane pump fuel: a little more knock headroom.", price: 250, octane: 98, stoichAfr: 14.7, lhvMjKg: 43.2, latentHeatKjKg: 360, egtOffsetC: 0 },
+  { id: "fuel-race", slot: "fuel", name: "Race Fuel 102 RON", description: "Leaded race gasoline. Strong knock resistance, slightly cooler burn.", price: 900, octane: 102, stoichAfr: 14.7, lhvMjKg: 44.0, latentHeatKjKg: 380, egtOffsetC: -10, unlockAfter: "c3" },
+  { id: "fuel-e85", slot: "fuel", name: "E85 Ethanol Conversion", description: "Flex sensor, ethanol-safe lines and E85. Huge knock resistance and charge cooling, but needs about 45% more injector flow.", price: 1400, octane: 105, stoichAfr: 9.8, lhvMjKg: 29.2, latentHeatKjKg: 850, egtOffsetC: -45, unlockAfter: "c3" },
 
   // Exhaust
   { id: "exh-stock", slot: "exhaust", name: "OEM Exhaust", description: "Two catalysts and two silencers.", price: 0, flowCapacity: 0.17, spoolAssist: 0 },
@@ -94,9 +94,9 @@ export const PARTS: Part[] = [
   { id: "cool-race", slot: "cooling", name: "Race Radiator + Oil Cooler", description: "Thick race core, oil cooler and vented bonnet airflow.", price: 1500, capacityKw: 420, heatSoakK: 5, unlockAfter: "c3" },
 
   // ECU
-  { id: "ecu-stock", slot: "ecu", name: "OEM ECU", description: "Locked factory map. Runs safe fuelling with mild boost control.", price: 0, maxBoostTarget: 0.5, timingRange: 0, afrRange: [12.5, 12.5], revLimitRange: [7000, 7000] },
-  { id: "ecu-piggy", slot: "ecu", name: "Piggyback Controller", description: "Adjust boost, fuel and a little ignition on top of the factory map.", price: 750, maxBoostTarget: 1.1, timingRange: 3, afrRange: [11.5, 13.5], revLimitRange: [6500, 7400] },
-  { id: "ecu-standalone", slot: "ecu", name: "Standalone ECU", description: "Full control of every map.", price: 1800, maxBoostTarget: 2.2, timingRange: 6, afrRange: [10.8, 14.7], revLimitRange: [6000, 8200], unlockAfter: "c2" },
+  { id: "ecu-stock", slot: "ecu", name: "OEM ECU", description: "Locked factory map. Runs safe fuelling with mild boost control.", price: 0, maxBoostTarget: 0.5, timingRange: 0, lambdaRange: [0.85, 0.85], revLimitRange: [7000, 7000] },
+  { id: "ecu-piggy", slot: "ecu", name: "Piggyback Controller", description: "Adjust boost, fuel and a little ignition on top of the factory map.", price: 750, maxBoostTarget: 1.1, timingRange: 3, lambdaRange: [0.78, 0.92], revLimitRange: [6500, 7400] },
+  { id: "ecu-standalone", slot: "ecu", name: "Standalone ECU", description: "Full control of every map.", price: 1800, maxBoostTarget: 2.2, timingRange: 6, lambdaRange: [0.73, 1.0], revLimitRange: [6000, 8200], unlockAfter: "c2" },
 ] as Part[];
 
 
@@ -129,7 +129,7 @@ export const STOCK_BUILD: Build = {
   ecu: "ecu-stock",
 };
 
-export const STOCK_TUNE: Tune = { boostTarget: 0.5, afrTarget: 12.5, timingOffset: 0, revLimit: 7000 };
+export const STOCK_TUNE: Tune = { boostTarget: 0.5, lambdaTarget: 0.85, timingOffset: 0, revLimit: 7000 };
 
 export function buildCost(build: Build): number {
   return SLOT_ORDER.reduce((sum, s) => sum + getPart(s, build[s]).price, 0);
@@ -141,7 +141,7 @@ export function clampTune(build: Build, tune: Tune): Tune {
   const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
   return {
     boostTarget: clamp(tune.boostTarget, 0, ecu.maxBoostTarget),
-    afrTarget: clamp(tune.afrTarget, ecu.afrRange[0], ecu.afrRange[1]),
+    lambdaTarget: clamp(tune.lambdaTarget, ecu.lambdaRange[0], ecu.lambdaRange[1]),
     timingOffset: clamp(tune.timingOffset, -ecu.timingRange, ecu.timingRange),
     revLimit: clamp(tune.revLimit, ecu.revLimitRange[0], ecu.revLimitRange[1]),
   };

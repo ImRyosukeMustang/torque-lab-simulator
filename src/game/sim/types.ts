@@ -42,14 +42,19 @@ export interface TurboPart extends PartBase {
   inertia: number;
   /** Maximum safe boost (bar gauge). */
   maximumBoost: number;
+  /** Compressor map: flow (fraction of choke flow) and pressure ratio at peak efficiency. */
+  islandFlow: number;
+  islandPr: number;
 }
 
 export interface IntercoolerPart extends PartBase {
   slot: "intercooler";
   /** Heat-exchange effectiveness 0..1. */
   effectiveness: number;
-  /** Core pressure drop at 0.25 kg/s (bar). */
+  /** Core pressure drop at 0.25 kg/s and 2 bar/95°C inlet (bar). */
   pressureDrop: number;
+  /** Temperature of the heat sink above ambient (K): 0 for air-to-air, coolant offset for water-to-air. */
+  sinkOffsetK: number;
 }
 
 export interface InjectorPart extends PartBase {
@@ -72,8 +77,10 @@ export interface FuelPart extends PartBase {
   octane: number;
   /** Stoichiometric AFR of the fuel (gasoline 14.7, E85 ~9.8). */
   stoichAfr: number;
-  /** Evaporative charge cooling (K) at full load. */
-  chargeCoolingK: number;
+  /** Lower heating value (MJ/kg). */
+  lhvMjKg: number;
+  /** Latent heat of vaporisation (kJ/kg); drives evaporative charge cooling. */
+  latentHeatKjKg: number;
   /** Change in exhaust gas temperature (°C) from burn speed / composition. */
   egtOffsetC: number;
 }
@@ -101,7 +108,8 @@ export interface EcuPart extends PartBase {
   /** Tuning access limits. */
   maxBoostTarget: number;
   timingRange: number;
-  afrRange: [number, number];
+  /** Lambda target range at wide-open throttle (1.00 = stoichiometric). */
+  lambdaRange: [number, number];
   revLimitRange: [number, number];
 }
 
@@ -136,8 +144,8 @@ export type Build = { [K in SlotId]: string };
 export interface Tune {
   /** Boost target (bar gauge). Ignored without a turbo. */
   boostTarget: number;
-  /** Wide-open-throttle AFR target, gasoline-equivalent (lambda x 14.7). */
-  afrTarget: number;
+  /** Wide-open-throttle lambda target (1.00 = stoichiometric for whatever fuel is fitted). */
+  lambdaTarget: number;
   /** Ignition advance offset from the base map (degrees). */
   timingOffset: number;
   revLimit: number;
@@ -160,12 +168,22 @@ export interface CurvePoint {
   bmepBar: number;
   torqueNm: number;
   powerHp: number;
+  /** Measured lambda. */
+  lambda: number;
+  /** Measured air-fuel ratio for the fitted fuel (lambda x fuel stoich). */
   afr: number;
   egtC: number;
   chargeTempC: number;
   airFlowKgS: number;
   injectorDuty: number;
   knockMargin: number;
+  /** Compressor pressure ratio and isentropic efficiency (0 without a turbo). */
+  pressureRatio: number;
+  compressorEff: number;
+  /** Intercooler effectiveness at this flow (0 without one). */
+  icEffectiveness: number;
+  /** Fuel mass delivered (g/s). */
+  fuelFlowGs: number;
 }
 
 export type Severity = "info" | "warning" | "critical";
@@ -174,7 +192,12 @@ export interface Diagnostic {
   code: string;
   severity: Severity;
   slot?: SlotId;
+  /** What was measured. */
   message: string;
+  /** Why it happened, in engineering terms. */
+  cause?: string;
+  /** Concrete changes that address it. */
+  fixes?: string[];
 }
 
 export interface SimResult {
@@ -185,8 +208,8 @@ export interface SimResult {
   peakTorqueRpm: number;
   peakBoostBar: number;
   peakEgtC: number;
-  minAfr: number;
-  maxAfr: number;
+  minLambda: number;
+  maxLambda: number;
   /** 0..1.5+, >1 means cooling cannot keep up. */
   thermalLoad: number;
   /** 0..100 */
