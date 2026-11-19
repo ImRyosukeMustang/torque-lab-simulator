@@ -187,4 +187,61 @@ describe("engine simulation", () => {
       expect(d.fixes?.length, d.code).toBeGreaterThan(0);
     }
   });
+
+  const bigTurbo = { intake: "intake-hf", camshaft: "cam-race", turbo: "turbo-t45", intercooler: "ic-w2a", injectors: "inj-1300", exhaust: "exh-header", ecu: "ecu-standalone", fuel: "fuel-e85", internals: "int-race", cooling: "cool-race" } as const;
+  const bigTune = T({ boostTarget: 1.5, lambdaTarget: 0.78, timingOffset: 6, revLimit: 8000 });
+
+  it("stock drivetrain loses about 14% between crank and rollers", () => {
+    const r = simulate(STOCK_BUILD, STOCK_TUNE);
+    expect(r.vehicle.drivetrainEfficiency).toBeCloseTo(0.862, 2);
+  });
+
+  it("the stock coupe does 0-100 km/h in 8.5-10 s and tops out between 200 and 240 km/h", () => {
+    const v = simulate(STOCK_BUILD, STOCK_TUNE).vehicle;
+    expect(v.zeroTo100S!).toBeGreaterThan(8.5);
+    expect(v.zeroTo100S!).toBeLessThan(10);
+    expect(v.topSpeedKmh).toBeGreaterThan(200);
+    expect(v.topSpeedKmh).toBeLessThan(240);
+  });
+
+  it("torque over the clutch's capacity slips it: less wheel power and lower reliability", () => {
+    const slip = simulate(B({ ...bigTurbo, gearbox: "gbx-auto6" }), bigTune);
+    const r = simulate(B({ ...bigTurbo }), bigTune);
+    expect(r.diagnostics.some((d) => d.code === "CLUTCH_SLIP")).toBe(true);
+    expect(r.diagnostics.some((d) => d.code === "GEARBOX_TORQUE")).toBe(true);
+    expect(r.wheelPowerHp).toBeLessThan(slip.wheelPowerHp);
+    expect(r.reliability).toBeLessThan(slip.reliability - 20);
+  });
+
+  it("AWD puts big power down far better than RWD, an LSD better than an open diff", () => {
+    const base = { ...bigTurbo, gearbox: "gbx-dct7" } as const;
+    const rwdOpen = simulate(B(base), bigTune).vehicle.zeroTo100S!;
+    const rwdLsd = simulate(B({ ...base, differential: "diff-clutch" }), bigTune).vehicle.zeroTo100S!;
+    const awd = simulate(B({ ...base, differential: "diff-clutch", drivetrain: "dt-awd" }), bigTune).vehicle.zeroTo100S!;
+    expect(rwdLsd).toBeLessThan(rwdOpen);
+    expect(awd).toBeLessThan(rwdLsd - 1);
+  });
+
+  it("FWD loses grip under acceleration that RWD gains", () => {
+    const base = { intake: "intake-hf", turbo: "turbo-t25", intercooler: "ic-small", injectors: "inj-440", exhaust: "exh-catback", ecu: "ecu-piggy" } as const;
+    const tune = T({ boostTarget: 1.0, lambdaTarget: 0.8 });
+    const rwd = simulate(B(base), tune).vehicle;
+    const fwd = simulate(B({ ...base, drivetrain: "dt-fwd" }), tune).vehicle;
+    expect(fwd.zeroTo100S!).toBeGreaterThan(rwd.zeroTo100S!);
+  });
+
+  it("a shorter final drive accelerates harder but lowers a rev-limited top speed", () => {
+    const b = B({ differential: "diff-helical" });
+    const short = simulate(b, T({ finalDrive: 4.6 })).vehicle;
+    const tall = simulate(b, T({ finalDrive: 3.2 })).vehicle;
+    expect(short.gears[0]!.peakWheelTorqueNm).toBeGreaterThan(tall.gears[0]!.peakWheelTorqueNm);
+    expect(short.gears[4]!.maxKmh).toBeLessThan(tall.gears[4]!.maxKmh);
+  });
+
+  it("wheel speed per gear follows ratio, final drive and tyre size", () => {
+    const g1 = simulate(STOCK_BUILD, STOCK_TUNE).vehicle.gears[0]!;
+    // 1000 rpm / (3.36 × 3.91) × 2π × 0.33 m → 9.46 km/h
+    expect(g1.kmhPer1000).toBeCloseTo(9.5, 1);
+    expect(g1.overall).toBeCloseTo(13.14, 2);
+  });
 });

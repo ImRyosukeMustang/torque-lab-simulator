@@ -32,6 +32,10 @@ export const SLOT_FOCUS: Record<SlotId, { target: Vec3; camera: Vec3 }> = {
   internals: { target: [1.03, 0.46, 0.05], camera: [1.75, 1.75, 1.25] },
   cooling: { target: [1.8, 0.52, 0], camera: [3.0, 1.5, 1.25] },
   ecu: { target: [0.76, 0.58, -0.48], camera: [1.45, 1.95, -1.3] },
+  gearbox: { target: [0.45, 0.3, 0], camera: [0.6, 0.45, 2.9] },
+  clutch: { target: [0.62, 0.35, 0], camera: [0.9, 0.5, 2.7] },
+  differential: { target: [-1.33, 0.3, 0], camera: [-2.6, 0.5, 2.4] },
+  drivetrain: { target: [0, 0.3, 0], camera: [0.2, 0.6, 4.2] },
 };
 
 export const VIEWS = {

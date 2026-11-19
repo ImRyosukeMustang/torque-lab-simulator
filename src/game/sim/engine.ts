@@ -1,5 +1,6 @@
 // Deterministic engine model. Pure functions only: the same build + tune always
 // yields the same curves. Rendering, dyno UI and challenge grading all read this.
+import { drivetrainEfficiency, simulateVehicle } from "./drivetrain";
 import { buildCost, clampTune, ENGINE, getPart } from "./parts";
 import type { Build, CurvePoint, Diagnostic, SimResult, Tune } from "./types";
 
@@ -18,8 +19,6 @@ const BASE_INDICATED_EFF = 0.456;
 const EVAP_FRACTION = 0.148;
 /** Share of fuel energy rejected to coolant and oil. */
 const COOLANT_SHARE = 0.28;
-/** Chassis-dyno drivetrain loss (gearbox, diff, tyres). */
-const DRIVETRAIN_LOSS = 0.14;
 /** Intercooler pressure-drop rating conditions. */
 const IC_REF_FLOW = 0.25;
 const IC_REF_DENSITY = (2.0e5) / (R_AIR * 368);
@@ -566,6 +565,15 @@ export function simulate(build: Build, rawTune: Tune): SimResult {
     });
   }
 
+  // Drivetrain: gearing, clutch, differential, traction and road performance.
+  const drive = simulateVehicle(build, tune, curve);
+  hit(drive.reliabilityHit);
+  diagnostics.push(...drive.diagnostics);
+  // Chassis-dyno wheel power: a slipping clutch caps the torque that reaches the rollers.
+  const box = getPart("gearbox", build.gearbox);
+  const clutchCap = box.integratedClutch ? Infinity : getPart("clutch", build.clutch).capacityNm;
+  const wheelPeak = Math.max(...curve.map((p) => (Math.min(p.torqueNm, clutchCap) * p.rpm * 2 * Math.PI) / 60 / 745.7)) * drivetrainEfficiency(build);
+
   if (diagnostics.length === 0) {
     diagnostics.push({ code: "OK", severity: "info", message: "All systems within operating limits.", cause: "No limits approached during the sweep." });
   }
@@ -584,7 +592,8 @@ export function simulate(build: Build, rawTune: Tune): SimResult {
     reliability: round(clamp(rel, 0, 100)),
     diagnostics,
     buildCost: buildCost(build),
-    wheelPowerHp: round(pPow.powerHp * (1 - DRIVETRAIN_LOSS)),
+    wheelPowerHp: round(wheelPeak),
+    vehicle: drive.vehicle,
   };
 }
 

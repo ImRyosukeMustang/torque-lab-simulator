@@ -26,10 +26,19 @@
 - [x] Lambda-based tune and readouts across RON 95/98, race fuel and E85 (save v3 migrates AFR saves)
 - [x] Compressor efficiency map (island, surge, choke) and ε-NTU intercooler with density-corrected pressure drop
 - [x] Diagnostics explain cause and suggest fixes
-- [ ] Contracts with client style briefs (waiting on the user's answer)
+
+## Prototype 0.4: Priority 2 drivetrain (in progress)
+- [x] Gearbox slot: manual, sequential, dual-clutch, automatic (gear count, ratios, efficiency, torque capacity, shift time, weight)
+- [x] Adjustable individual gear ratios and final drive
+- [x] Clutch (capacity, slip) and differential (open, clutch LSD, helical LSD, ratios)
+- [x] FWD / RWD / AWD layouts with traction and loss consequences
+- [ ] Performance maths done (wheel torque per gear, speed vs RPM, 0-100, 0-200, quarter mile, top speed); still needed: Drivetrain tab with ratio sliders, charts and track test
+- [x] Drivetrain contracts + client style briefs (bonus credits)
+- [ ] UI click / installation sound effects (written and tested, saved in .lovable/pending; not wired into the game yet)
+- [ ] Engine sound reflects every modification (written and tested, saved in .lovable/pending; not wired in yet)
+- [ ] Career screen: show style briefs and the new time/speed targets
 
 ## Next (from the development plan)
 - [ ] Visual customisation: bumpers, spoilers with attachment points
-- [ ] Transmission and gear ratios, performance testing
 - [ ] Aerodynamics model and wind tunnel
 - [ ] More platforms, chapters and research points

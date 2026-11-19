@@ -1,6 +1,12 @@
 // Pure data types for the AUTOMECH simulation. No React, no three.js.
 
-export type SlotId = "intake" | "camshaft" | "turbo" | "intercooler" | "injectors" | "fuel" | "exhaust" | "internals" | "cooling" | "ecu";
+export type SlotId =
+  | "intake" | "camshaft" | "turbo" | "intercooler" | "injectors" | "fuel" | "exhaust" | "internals" | "cooling" | "ecu"
+  | "gearbox" | "clutch" | "differential" | "drivetrain";
+
+export type TransmissionType = "manual" | "sequential" | "dct" | "automatic";
+export type DiffType = "open" | "clutch-lsd" | "helical-lsd";
+export type DriveLayout = "fwd" | "rwd" | "awd";
 
 interface PartBase {
   id: string;
@@ -113,6 +119,63 @@ export interface EcuPart extends PartBase {
   revLimitRange: [number, number];
 }
 
+export interface GearboxPart extends PartBase {
+  slot: "gearbox";
+  transmission: TransmissionType;
+  /** Default ratio per gear, 1st first. The gear count is ratios.length. */
+  ratios: number[];
+  /** Whether individual ratios can be re-cut (±20% of the default set). */
+  adjustable: boolean;
+  /** Mechanical efficiency of the gearbox (0..1). */
+  efficiency: number;
+  /** Input torque the gears and shafts survive continuously (Nm). */
+  maxTorqueNm: number;
+  /** Time a shift takes (s). */
+  shiftTimeS: number;
+  /** Share of drive torque still delivered during a shift (0 manual/sequential, ~0.85 dual-clutch). */
+  torqueDuringShift: number;
+  weightKg: number;
+  /** Has its own clutch or torque converter, so the separate clutch part is bypassed. */
+  integratedClutch: boolean;
+  /** Torque-converter multiplication at stall (1 = none). */
+  converterMultiplication: number;
+  /** Engine speed the car launches at (stall speed for a converter, launch control for a DCT). */
+  launchRpm: number;
+}
+
+export interface ClutchPart extends PartBase {
+  slot: "clutch";
+  /** Torque the clutch transmits before it slips (Nm). */
+  capacityNm: number;
+  /** Engine speed held while slipping the clutch at launch. */
+  launchRpm: number;
+  weightKg: number;
+}
+
+export interface DifferentialPart extends PartBase {
+  slot: "differential";
+  diffType: DiffType;
+  /** 0 open .. 1 locked: how much torque can move to the wheel with grip. */
+  lockFactor: number;
+  efficiency: number;
+  /** Default final-drive ratio and the ratios the crown wheel and pinion can be swapped to. */
+  finalDrive: number;
+  finalDriveRange: [number, number];
+  weightKg: number;
+}
+
+export interface DrivetrainPart extends PartBase {
+  slot: "drivetrain";
+  layout: DriveLayout;
+  /** Propshaft, transfer case, driveshaft and tyre losses (0..1). */
+  efficiency: number;
+  weightKg: number;
+  /** Share of drive torque sent to the front axle (0 RWD, 1 FWD). */
+  frontTorqueShare: number;
+  /** Change in static front weight distribution from moving drivetrain mass. */
+  frontWeightShift: number;
+}
+
 export type Part =
   | IntakePart
   | CamshaftPart
@@ -123,7 +186,11 @@ export type Part =
   | ExhaustPart
   | InternalsPart
   | CoolingPart
-  | EcuPart;
+  | EcuPart
+  | GearboxPart
+  | ClutchPart
+  | DifferentialPart
+  | DrivetrainPart;
 
 export interface PartBySlot {
   intake: IntakePart;
@@ -136,6 +203,10 @@ export interface PartBySlot {
   internals: InternalsPart;
   cooling: CoolingPart;
   ecu: EcuPart;
+  gearbox: GearboxPart;
+  clutch: ClutchPart;
+  differential: DifferentialPart;
+  drivetrain: DrivetrainPart;
 }
 
 /** Installed part id per slot. */
@@ -149,6 +220,9 @@ export interface Tune {
   /** Ignition advance offset from the base map (degrees). */
   timingOffset: number;
   revLimit: number;
+  /** Ratio per gear (1st first); length always matches the fitted gearbox. */
+  gearRatios: number[];
+  finalDrive: number;
 }
 
 export interface EngineSpec {
@@ -200,6 +274,48 @@ export interface Diagnostic {
   fixes?: string[];
 }
 
+export interface GearInfo {
+  gear: number;
+  ratio: number;
+  /** Gear × final drive. */
+  overall: number;
+  kmhPer1000: number;
+  /** Road speed at the rev limit in this gear. */
+  maxKmh: number;
+  /** Peak torque at the wheels in this gear (after clutch limit and losses). */
+  peakWheelTorqueNm: number;
+  /** Engine speed after shifting into this gear at the rev limit (0 for 1st). */
+  rpmAfterShift: number;
+}
+
+export interface AccelSample {
+  t: number;
+  kmh: number;
+  rpm: number;
+  gear: number;
+  /** Drive force limited by tyre grip at this instant. */
+  wheelspin: boolean;
+}
+
+export interface VehicleResult {
+  massKg: number;
+  frontWeight: number;
+  /** Gearbox × differential × driveline efficiency. */
+  drivetrainEfficiency: number;
+  gears: GearInfo[];
+  zeroTo100S: number | null;
+  zeroTo200S: number | null;
+  quarterMileS: number | null;
+  quarterMileKmh: number | null;
+  topSpeedKmh: number;
+  topSpeedGear: number;
+  topSpeedLimit: "drag" | "rev-limit";
+  /** Speed below which the tyres cannot transmit the available drive force (0 = never traction-limited). */
+  tractionLimitedToKmh: number;
+  shiftRpm: number[];
+  trace: AccelSample[];
+}
+
 export interface SimResult {
   curve: CurvePoint[];
   peakPowerHp: number;
@@ -218,4 +334,5 @@ export interface SimResult {
   buildCost: number;
   /** Estimated power at the wheels after drivetrain losses (chassis dyno reading). */
   wheelPowerHp: number;
+  vehicle: VehicleResult;
 }

@@ -10,7 +10,9 @@ export const ENGINE: EngineSpec = {
   idleRpm: 850,
 };
 
-export const SLOT_ORDER: SlotId[] = ["intake", "camshaft", "turbo", "intercooler", "injectors", "fuel", "exhaust", "internals", "cooling", "ecu"];
+export const ENGINE_SLOTS: SlotId[] = ["intake", "camshaft", "turbo", "intercooler", "injectors", "fuel", "exhaust", "internals", "cooling", "ecu"];
+export const DRIVETRAIN_SLOTS: SlotId[] = ["gearbox", "clutch", "differential", "drivetrain"];
+export const SLOT_ORDER: SlotId[] = [...ENGINE_SLOTS, ...DRIVETRAIN_SLOTS];
 
 export const SLOT_LABEL: Record<SlotId, string> = {
   intake: "Air Intake",
@@ -23,6 +25,10 @@ export const SLOT_LABEL: Record<SlotId, string> = {
   internals: "Pistons & Rods",
   cooling: "Cooling",
   ecu: "ECU",
+  gearbox: "Gearbox",
+  clutch: "Clutch",
+  differential: "Differential",
+  drivetrain: "Drive Layout",
 };
 
 export const SLOT_HELP: Record<SlotId, string> = {
@@ -36,6 +42,10 @@ export const SLOT_HELP: Record<SlotId, string> = {
   internals: "Compression ratio and piston/rod strength. Higher compression is more efficient but knocks sooner; forged parts survive far higher cylinder pressure.",
   cooling: "Rejects combustion heat. If heat output exceeds capacity the engine overheats on long runs; hot under-bonnet air also heats the intake charge.",
   ecu: "Engine management. Better ECUs unlock boost, fuel and ignition tuning.",
+  gearbox: "Multiplies engine torque. Ratios decide how fast each gear accelerates and how fast the car can go; shift time, efficiency and torque capacity differ by type.",
+  clutch: "Couples the engine to the gearbox. If engine torque exceeds its capacity it slips: power never reaches the wheels and the friction plate overheats.",
+  differential: "Splits torque between the driven wheels and sets the final-drive ratio. An open diff sends power to the wheel with least grip; an LSD keeps both pushing.",
+  drivetrain: "Which wheels are driven. Weight moves to the rear under acceleration: rear-drive gains grip, front-drive loses it, all-wheel drive uses all four tyres but adds weight and losses.",
 };
 
 export const PARTS: Part[] = [
@@ -97,6 +107,28 @@ export const PARTS: Part[] = [
   { id: "ecu-stock", slot: "ecu", name: "OEM ECU", description: "Locked factory map. Runs safe fuelling with mild boost control.", price: 0, maxBoostTarget: 0.5, timingRange: 0, lambdaRange: [0.85, 0.85], revLimitRange: [7000, 7000] },
   { id: "ecu-piggy", slot: "ecu", name: "Piggyback Controller", description: "Adjust boost, fuel and a little ignition on top of the factory map.", price: 750, maxBoostTarget: 1.1, timingRange: 3, lambdaRange: [0.78, 0.92], revLimitRange: [6500, 7400] },
   { id: "ecu-standalone", slot: "ecu", name: "Standalone ECU", description: "Full control of every map.", price: 1800, maxBoostTarget: 2.2, timingRange: 6, lambdaRange: [0.73, 1.0], revLimitRange: [6000, 8200], unlockAfter: "c2" },
+
+  // Gearbox
+  { id: "gbx-oem5", slot: "gearbox", name: "OEM 5-Speed Manual", description: "Wide-ratio road box with synchromesh and a long throw.", price: 0, transmission: "manual", ratios: [3.36, 2.06, 1.42, 1.09, 0.87], adjustable: false, efficiency: 0.955, maxTorqueNm: 420, shiftTimeS: 0.45, torqueDuringShift: 0, weightKg: 40, integratedClutch: false, converterMultiplication: 1, launchRpm: 0 },
+  { id: "gbx-6cr", slot: "gearbox", name: "Close-Ratio 6-Speed Manual", description: "Six closely spaced gears that keep the engine in its power band. Ratios can be re-cut.", price: 2200, transmission: "manual", ratios: [3.15, 2.19, 1.64, 1.29, 1.06, 0.89], adjustable: true, efficiency: 0.96, maxTorqueNm: 500, shiftTimeS: 0.35, torqueDuringShift: 0, weightKg: 42, integratedClutch: false, converterMultiplication: 1, launchRpm: 0, unlockAfter: "c2" },
+  { id: "gbx-auto6", slot: "gearbox", name: "6-Speed Torque-Converter Auto", description: "Fluid coupling multiplies torque off the line and shifts under load, but churning oil costs efficiency.", price: 2600, transmission: "automatic", ratios: [4.04, 2.37, 1.55, 1.16, 0.86, 0.69], adjustable: false, efficiency: 0.915, maxTorqueNm: 620, shiftTimeS: 0.25, torqueDuringShift: 0.5, weightKg: 78, integratedClutch: true, converterMultiplication: 1.9, launchRpm: 2700, unlockAfter: "c3" },
+  { id: "gbx-dct7", slot: "gearbox", name: "7-Speed Dual-Clutch", description: "Two wet clutches pre-select the next gear: near-seamless shifts and launch control, but heavy.", price: 5200, transmission: "dct", ratios: [3.6, 2.32, 1.62, 1.24, 1.0, 0.83, 0.69], adjustable: true, efficiency: 0.95, maxTorqueNm: 650, shiftTimeS: 0.1, torqueDuringShift: 0.85, weightKg: 74, integratedClutch: true, converterMultiplication: 1, launchRpm: 4200, unlockAfter: "c5" },
+  { id: "gbx-seq6", slot: "gearbox", name: "6-Speed Sequential Dog Box", description: "Straight-cut dog-engagement gears: 60 ms shifts, the highest torque capacity and audible gear whine.", price: 7400, transmission: "sequential", ratios: [2.85, 2.05, 1.62, 1.33, 1.12, 0.96], adjustable: true, efficiency: 0.975, maxTorqueNm: 800, shiftTimeS: 0.06, torqueDuringShift: 0, weightKg: 34, integratedClutch: false, converterMultiplication: 1, launchRpm: 0, unlockAfter: "c7" },
+
+  // Clutch
+  { id: "clutch-oem", slot: "clutch", name: "OEM Organic Clutch", description: "Single organic plate with a light pedal.", price: 0, capacityNm: 400, launchRpm: 3000, weightKg: 9 },
+  { id: "clutch-stage2", slot: "clutch", name: "Stage 2 Kevlar Clutch", description: "Uprated pressure plate and Kevlar facing: more clamp load, still streetable.", price: 650, capacityNm: 520, launchRpm: 3600, weightKg: 9, unlockAfter: "c2" },
+  { id: "clutch-twin", slot: "clutch", name: "Twin-Plate Sintered Clutch", description: "Two sintered plates double the friction area: huge capacity and a hard, aggressive launch.", price: 1600, capacityNm: 800, launchRpm: 4500, weightKg: 7, unlockAfter: "c4" },
+
+  // Differential
+  { id: "diff-open", slot: "differential", name: "OEM Open Differential 3.91", description: "Splits torque equally, so the wheel with less grip sets the limit.", price: 0, diffType: "open", lockFactor: 0, efficiency: 0.96, finalDrive: 3.91, finalDriveRange: [3.91, 3.91], weightKg: 30 },
+  { id: "diff-helical", slot: "differential", name: "Helical LSD", description: "Gear-type limited slip: smooth, maintenance-free torque biasing. Choice of final-drive ratios.", price: 1100, diffType: "helical-lsd", lockFactor: 0.45, efficiency: 0.962, finalDrive: 3.91, finalDriveRange: [3.2, 4.6], weightKg: 31, unlockAfter: "c2" },
+  { id: "diff-clutch", slot: "differential", name: "1.5-Way Clutch-Pack LSD", description: "Friction plates lock the axle hard under power: the best traction, with a little drag.", price: 1500, diffType: "clutch-lsd", lockFactor: 0.7, efficiency: 0.955, finalDrive: 3.91, finalDriveRange: [3.2, 4.6], weightKg: 32, unlockAfter: "c3" },
+
+  // Drive layout
+  { id: "dt-rwd", slot: "drivetrain", name: "Rear-Wheel Drive (OEM)", description: "Front engine, propshaft to a rear axle. Grip grows as weight shifts back under acceleration.", price: 0, layout: "rwd", efficiency: 0.94, weightKg: 22, frontTorqueShare: 0, frontWeightShift: 0 },
+  { id: "dt-fwd", slot: "drivetrain", name: "Front-Drive Transaxle Conversion", description: "No propshaft: lighter and more efficient, but the front tyres lose load under acceleration and big torque steers the wheel.", price: 3000, layout: "fwd", efficiency: 0.955, weightKg: 12, frontTorqueShare: 1, frontWeightShift: 0.05, unlockAfter: "c3" },
+  { id: "dt-awd", slot: "drivetrain", name: "All-Wheel Drive Conversion", description: "Transfer case, front diff and driveshafts. Four tyres put power down, at the cost of weight and friction.", price: 6500, layout: "awd", efficiency: 0.895, weightKg: 95, frontTorqueShare: 0.4, frontWeightShift: 0.02, unlockAfter: "c7" },
 ] as Part[];
 
 
@@ -127,22 +159,55 @@ export const STOCK_BUILD: Build = {
   internals: "int-stock",
   cooling: "cool-stock",
   ecu: "ecu-stock",
+  gearbox: "gbx-oem5",
+  clutch: "clutch-oem",
+  differential: "diff-open",
+  drivetrain: "dt-rwd",
 };
 
-export const STOCK_TUNE: Tune = { boostTarget: 0.5, lambdaTarget: 0.85, timingOffset: 0, revLimit: 7000 };
+export const STOCK_TUNE: Tune = { boostTarget: 0.5, lambdaTarget: 0.85, timingOffset: 0, revLimit: 7000, gearRatios: [3.36, 2.06, 1.42, 1.09, 0.87], finalDrive: 3.91 };
+
+/** Gear ratios may be re-cut within this fraction of the box's default set. */
+export const GEAR_RATIO_RANGE = 0.2;
+/** Neighbouring gears must differ by at least this ratio. */
+export const MIN_GEAR_STEP = 0.05;
+
+/** Re-cut ratio limits for one gear of a gearbox. */
+export function gearRatioLimits(defaultRatio: number): [number, number] {
+  return [Math.round(defaultRatio * (1 - GEAR_RATIO_RANGE) * 100) / 100, Math.round(defaultRatio * (1 + GEAR_RATIO_RANGE) * 100) / 100];
+}
 
 export function buildCost(build: Build): number {
   return SLOT_ORDER.reduce((sum, s) => sum + getPart(s, build[s]).price, 0);
 }
 
-/** Clamp a tune to what the installed ECU allows. */
+const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
+
+/** Ratios as the fitted gearbox allows: defaults on a fixed box, otherwise each within range and strictly descending. */
+function clampRatios(build: Build, ratios: number[] | undefined): number[] {
+  const box = getPart("gearbox", build.gearbox);
+  if (!box.adjustable || !ratios || ratios.length !== box.ratios.length || ratios.some((r) => !Number.isFinite(r))) return [...box.ratios];
+  const out: number[] = [];
+  box.ratios.forEach((def, i) => {
+    const [lo, hi] = gearRatioLimits(def);
+    let r = clamp(Math.round(ratios[i]! * 100) / 100, lo, hi);
+    const prev = out[i - 1];
+    if (prev !== undefined) r = Math.min(r, Math.round((prev - MIN_GEAR_STEP) * 100) / 100);
+    out.push(r);
+  });
+  return out;
+}
+
+/** Clamp a tune to what the installed ECU, gearbox and differential allow. */
 export function clampTune(build: Build, tune: Tune): Tune {
   const ecu = getPart("ecu", build.ecu);
-  const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
+  const diff = getPart("differential", build.differential);
   return {
     boostTarget: clamp(tune.boostTarget, 0, ecu.maxBoostTarget),
     lambdaTarget: clamp(tune.lambdaTarget, ecu.lambdaRange[0], ecu.lambdaRange[1]),
     timingOffset: clamp(tune.timingOffset, -ecu.timingRange, ecu.timingRange),
     revLimit: clamp(tune.revLimit, ecu.revLimitRange[0], ecu.revLimitRange[1]),
+    gearRatios: clampRatios(build, tune.gearRatios),
+    finalDrive: clamp(Number.isFinite(tune.finalDrive) ? tune.finalDrive : diff.finalDrive, diff.finalDriveRange[0], diff.finalDriveRange[1]),
   };
 }

@@ -65,5 +65,35 @@ export function partSpecs(p: Part): [string, string][] {
         ["Lambda", p.lambdaRange[0] === p.lambdaRange[1] ? `Locked λ ${p.lambdaRange[0].toFixed(2)}` : `λ ${p.lambdaRange[0].toFixed(2)}–${p.lambdaRange[1].toFixed(2)}`],
         ["Rev limit", p.revLimitRange[0] === p.revLimitRange[1] ? `${p.revLimitRange[0]}` : `${p.revLimitRange[0]}–${p.revLimitRange[1]}`],
       ];
+    case "gearbox":
+      return [
+        ["Type", { manual: "Manual", sequential: "Sequential", dct: "Dual-clutch", automatic: "Automatic" }[p.transmission]],
+        ["Gears", `${p.ratios.length}${p.adjustable ? " · adjustable" : ""}`],
+        ["Ratios", p.ratios.join(" / ")],
+        ["Efficiency", `${Math.round(p.efficiency * 1000) / 10}%`],
+        ["Max torque", `${p.maxTorqueNm} Nm`],
+        ["Shift time", `${Math.round(p.shiftTimeS * 1000)} ms`],
+        ["Weight", `${p.weightKg} kg`],
+      ];
+    case "clutch":
+      return [
+        ["Capacity", `${p.capacityNm} Nm`],
+        ["Launch", `${p.launchRpm} rpm`],
+        ["Weight", `${p.weightKg} kg`],
+      ];
+    case "differential":
+      return [
+        ["Type", { open: "Open", "clutch-lsd": "Clutch-pack LSD", "helical-lsd": "Helical LSD" }[p.diffType]],
+        ["Lock", `${Math.round(p.lockFactor * 100)}%`],
+        ["Final drive", p.finalDriveRange[0] === p.finalDriveRange[1] ? `${p.finalDrive}` : `${p.finalDriveRange[0]}–${p.finalDriveRange[1]}`],
+        ["Efficiency", `${Math.round(p.efficiency * 1000) / 10}%`],
+      ];
+    case "drivetrain":
+      return [
+        ["Layout", p.layout.toUpperCase()],
+        ["Efficiency", `${Math.round(p.efficiency * 1000) / 10}%`],
+        ["Front torque", `${Math.round(p.frontTorqueShare * 100)}%`],
+        ["Weight", `${p.weightKg} kg`],
+      ];
   }
 }

@@ -80,3 +80,11 @@ export const STRIPE_LABEL: Record<StripeStyle, string> = {
   center: "Centre stripe",
   side: "Side flash",
 };
+
+/** Euclidean RGB distance between two #rrggbb colours (0 = identical, ~441 = black vs white). */
+export function colorDistance(a: string, b: string): number {
+  const rgb = (h: string) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+  const [r1, g1, b1] = rgb(a);
+  const [r2, g2, b2] = rgb(b);
+  return Math.hypot(r1! - r2!, g1! - g2!, b1! - b2!);
+}
