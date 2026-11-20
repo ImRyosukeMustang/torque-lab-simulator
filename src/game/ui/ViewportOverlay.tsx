@@ -1,4 +1,7 @@
-import { Car, Cpu, MousePointer2, PanelTopOpen, PanelTopClose } from "lucide-react";
+import { Car, Cpu, KeyRound, MousePointer2, PanelTopOpen, PanelTopClose } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { engineAudio } from "../audio";
+import { describeSound, soundProfile } from "../soundProfile";
 import { cn } from "@/lib/utils";
 import { SLOT_LABEL, SLOT_ORDER } from "../sim/parts";
 import { useGame } from "../store";
@@ -10,6 +13,27 @@ export function ViewportOverlay() {
   const setView = useGame((s) => s.setView);
   const setHood = useGame((s) => s.setHoodOpen);
   const selectSlot = useGame((s) => s.selectSlot);
+  const build = useGame((s) => s.game.build);
+  const settings = useGame((s) => s.settings);
+  const dynoRunning = useGame((s) => s.dynoRunning);
+  const [revving, setRevving] = useState(false);
+  const cancelRev = useRef<(() => void) | null>(null);
+  const timer = useRef(0);
+  useEffect(
+    () => () => {
+      cancelRev.current?.();
+      window.clearTimeout(timer.current);
+    },
+    [],
+  );
+  const startEngine = () => {
+    cancelRev.current?.();
+    window.clearTimeout(timer.current);
+    cancelRev.current = engineAudio.revDemo({ volume: settings.volume, profile: soundProfile(build) });
+    setRevving(true);
+    timer.current = window.setTimeout(() => setRevving(false), 3800);
+  };
+  const traits = describeSound(soundProfile(build));
 
   const chip = (active: boolean) =>
     cn(
@@ -26,6 +50,14 @@ export function ViewportOverlay() {
           </button>
           <button className={chip(view === "bay")} onClick={() => setView("bay")}>
             <Cpu className="h-3.5 w-3.5" /> Engine bay
+          </button>
+          <button
+            className={chip(revving)}
+            onClick={startEngine}
+            disabled={dynoRunning || !settings.sound}
+            title={settings.sound ? `Listen to this build: ${traits.join(", ") || "stock sound"}` : "Sound is muted"}
+          >
+            <KeyRound className="h-3.5 w-3.5" /> {revving ? "Revving…" : "Start engine"}
           </button>
           <button className={chip(hood)} onClick={() => setHood(!hood)}>
             {hood ? <PanelTopClose className="h-3.5 w-3.5" /> : <PanelTopOpen className="h-3.5 w-3.5" />} {hood ? "Close bonnet" : "Open bonnet"}

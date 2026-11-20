@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { CHALLENGES } from "../sim/challenges";
 import { purchaseBlock, SELL_RATE } from "../sim/economy";
-import { getPart, partsForSlot, SLOT_HELP, SLOT_LABEL, SLOT_ORDER } from "../sim/parts";
+import { DRIVETRAIN_SLOTS, ENGINE_SLOTS, getPart, partsForSlot, SLOT_HELP, SLOT_LABEL } from "../sim/parts";
 import { useGame } from "../store";
 import { fmtCredits, partSpecs } from "./format";
 import { TunePanel } from "./TunePanel";
@@ -24,6 +24,10 @@ function ActiveContract() {
         {[
           next.constraints.minPeakHp && `≥ ${next.constraints.minPeakHp} hp`,
           next.constraints.minTorqueAt && `≥ ${next.constraints.minTorqueAt.nm} Nm @ ${next.constraints.minTorqueAt.rpm}`,
+          next.constraints.maxZeroTo100S && `0-100 ≤ ${next.constraints.maxZeroTo100S} s`,
+          next.constraints.minTopSpeedKmh && `≥ ${next.constraints.minTopSpeedKmh} km/h`,
+          next.constraints.maxQuarterMileS && `¼ mile ≤ ${next.constraints.maxQuarterMileS} s`,
+          next.constraints.layout && next.constraints.layout.toUpperCase(),
           `rel ≥ ${next.constraints.minReliability}%`,
           `≤ ${fmtCredits(next.constraints.maxBudget)}`,
         ]
@@ -48,30 +52,32 @@ export function WorkshopPanel() {
     <div className="space-y-5 p-4">
       <ActiveContract />
 
-      <section>
-        <h2 className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Engine systems</h2>
-        <div className="grid grid-cols-1 gap-1">
-          {SLOT_ORDER.map((slot) => {
-            const part = getPart(slot, game.build[slot]);
-            const active = slot === selected;
-            return (
-              <button
-                key={slot}
-                onClick={() => selectSlot(slot)}
-                onMouseEnter={() => setHovered(slot)}
-                onMouseLeave={() => setHovered(null)}
-                className={cn(
-                  "flex items-center justify-between rounded-md border px-3 py-2 text-left transition-colors",
-                  active ? "border-primary/60 bg-accent" : "border-transparent hover:bg-muted",
-                )}
-              >
-                <span className="text-sm font-medium">{SLOT_LABEL[slot]}</span>
-                <span className={cn("truncate pl-3 text-xs", part.price === 0 ? "text-muted-foreground" : "text-primary")}>{part.name}</span>
-              </button>
-            );
-          })}
-        </div>
-      </section>
+      {([["Engine systems", ENGINE_SLOTS], ["Drivetrain", DRIVETRAIN_SLOTS]] as const).map(([title, slots]) => (
+        <section key={title}>
+          <h2 className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{title}</h2>
+          <div className="grid grid-cols-1 gap-1">
+            {slots.map((slot) => {
+              const part = getPart(slot, game.build[slot]);
+              const active = slot === selected;
+              return (
+                <button
+                  key={slot}
+                  onClick={() => selectSlot(slot)}
+                  onMouseEnter={() => setHovered(slot)}
+                  onMouseLeave={() => setHovered(null)}
+                  className={cn(
+                    "flex items-center justify-between rounded-md border px-3 py-2 text-left transition-colors",
+                    active ? "border-primary/60 bg-accent" : "border-transparent hover:bg-muted",
+                  )}
+                >
+                  <span className="text-sm font-medium">{SLOT_LABEL[slot]}</span>
+                  <span className={cn("truncate pl-3 text-xs", part.price === 0 ? "text-muted-foreground" : "text-primary")}>{part.name}</span>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+      ))}
 
       <section className="space-y-3">
         <div>

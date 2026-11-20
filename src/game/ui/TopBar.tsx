@@ -1,4 +1,4 @@
-import { Coins, RotateCcw, Gauge, Wrench, Trophy, Paintbrush, Settings2, Volume2, VolumeX } from "lucide-react";
+import { Coins, Cog, RotateCcw, Gauge, Wrench, Trophy, Paintbrush, Settings2, Volume2, VolumeX } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,6 +24,7 @@ import { fmtCredits } from "./format";
 const TABS: { id: Tab; label: string; icon: typeof Wrench }[] = [
   { id: "workshop", label: "Workshop", icon: Wrench },
   { id: "dyno", label: "Dyno Lab", icon: Gauge },
+  { id: "drivetrain", label: "Drivetrain", icon: Cog },
   { id: "paint", label: "Paint Shop", icon: Paintbrush },
   { id: "career", label: "Career", icon: Trophy },
 ];
@@ -41,15 +42,15 @@ export function TopBar() {
     <header className="flex h-14 shrink-0 items-center gap-4 border-b border-border bg-sidebar px-4">
       <div className="flex items-baseline gap-2">
         <span className="font-display text-xl font-bold tracking-[0.2em]">AUTOMECH</span>
-        <span className="hidden font-mono text-[10px] text-muted-foreground sm:inline">PROTOTYPE 0.2</span>
+        <span className="hidden font-mono text-[10px] text-muted-foreground sm:inline">PROTOTYPE 0.4</span>
       </div>
       <nav className="flex items-center gap-1">
         {TABS.map(({ id, label, icon: Icon }) => (
           <button
             key={id}
             onClick={() => setTab(id)}
-            disabled={dynoRunning && id !== "dyno"}
-            title={dynoRunning && id !== "dyno" ? "Finish or abort the dyno run first" : label}
+            disabled={dynoRunning && id !== tab}
+            title={dynoRunning && id !== tab ? "Finish or abort the test run first" : label}
             className={cn(
               "flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40",
               tab === id ? "bg-accent text-foreground" : "text-muted-foreground hover:text-foreground",
@@ -119,8 +120,12 @@ function SettingsMenu() {
         </PopoverTrigger>
         <PopoverContent align="end" className="w-64 space-y-4 font-sans">
           <div className="flex items-center justify-between">
-            <span className="text-sm font-medium">Engine sound</span>
-            <Switch checked={settings.sound} onCheckedChange={(sound) => setSettings({ sound })} aria-label="Engine sound" />
+            <span className="text-sm font-medium">Sound</span>
+            <Switch checked={settings.sound} onCheckedChange={(sound) => setSettings({ sound })} aria-label="Sound" />
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium">Workshop sound effects</span>
+            <Switch checked={settings.uiSound} disabled={!settings.sound} onCheckedChange={(uiSound) => setSettings({ uiSound })} aria-label="Workshop sound effects" />
           </div>
           <div className="space-y-2">
             <div className="flex items-center justify-between text-sm">

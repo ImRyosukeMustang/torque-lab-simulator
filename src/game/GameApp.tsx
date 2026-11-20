@@ -2,8 +2,10 @@ import { useEffect } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
 import { GameCanvas } from "./scene/GameCanvas";
+import { installGlobalClickSound } from "./uiSound";
 import { useGame } from "./store";
 import { CareerPanel } from "./ui/CareerPanel";
+import { DrivetrainPanel } from "./ui/DrivetrainPanel";
 import { DynoPanel } from "./ui/DynoPanel";
 import { PaintPanel } from "./ui/PaintPanel";
 import { TopBar } from "./ui/TopBar";
@@ -17,6 +19,7 @@ export function GameApp() {
   useEffect(() => {
     load();
   }, [load]);
+  useEffect(() => installGlobalClickSound(), []);
 
   return (
     <div className="flex h-dvh flex-col overflow-hidden bg-background text-foreground">
@@ -29,10 +32,10 @@ export function GameApp() {
         <aside
           className={cn(
             "min-h-0 flex-1 overflow-y-auto border-t border-border bg-sidebar lg:flex-none lg:border-l lg:border-t-0",
-            tab === "dyno" ? "lg:w-[min(720px,52vw)]" : "lg:w-[420px]",
+            tab === "dyno" || tab === "drivetrain" ? "lg:w-[min(720px,52vw)]" : "lg:w-[420px]",
           )}
         >
-          {loaded && (tab === "workshop" ? <WorkshopPanel /> : tab === "dyno" ? <DynoPanel /> : tab === "paint" ? <PaintPanel /> : <CareerPanel />)}
+          {loaded && (tab === "workshop" ? <WorkshopPanel /> : tab === "dyno" ? <DynoPanel /> : tab === "drivetrain" ? <DrivetrainPanel /> : tab === "paint" ? <PaintPanel /> : <CareerPanel />)}
         </aside>
       </main>
       <Toaster position="top-center" theme="dark" />

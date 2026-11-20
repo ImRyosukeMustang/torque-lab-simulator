@@ -42,3 +42,4 @@ use the editor.
 - Tunes store a lambda target, never AFR: AFR is derived per fitted fuel (lambda × stoich) so the same calibration means the same mixture on every fuel; combustion energy comes from delivered/burnable fuel mass × the fuel's LHV.
 - Every non-info `Diagnostic` must carry `cause` (why, with the measured numbers) and `fixes` (concrete changes); a test enforces this.
 - Graphics quality (`settings.quality`, stored apart from the save) gates DPR, shadows and post-processing; with post-processing on, renderer tone mapping is off and ACES runs last in the effect chain after bloom.
+- Engine sound is derived from the build by pure `soundProfile(build)` (tested) and voiced by `audio.ts` over the shared context in `audioCore.ts`; UI effects live in `uiSound.ts`. Add sound character as profile fields, never part-id checks inside the synth, so every part change stays audible and testable.

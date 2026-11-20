@@ -14,21 +14,25 @@ import {
   type SubmitOutcome,
 } from "./sim/economy";
 import { simulate } from "./sim/engine";
+import { findPart } from "./sim/parts";
+import { uiSound } from "./uiSound";
 import type { Cosmetics } from "./sim/cosmetics";
 import type { SimResult, SlotId, Tune } from "./sim/types";
 
-export type Tab = "workshop" | "dyno" | "paint" | "career";
+export type Tab = "workshop" | "dyno" | "drivetrain" | "paint" | "career";
 export type Quality = "high" | "medium" | "low";
 export interface Settings {
   quality: Quality;
   sound: boolean;
   volume: number;
+  /** Clicks and workshop sound effects. */
+  uiSound: boolean;
 }
 export type CameraView = "exterior" | "bay" | "dyno" | "paint" | SlotId;
 
 const SAVE_KEY = "automech.save.v1";
 const SETTINGS_KEY = "automech.settings.v1";
-const DEFAULT_SETTINGS: Settings = { quality: "high", sound: true, volume: 0.7 };
+const DEFAULT_SETTINGS: Settings = { quality: "high", sound: true, volume: 0.7, uiSound: true };
 
 function loadSettings(): Settings {
   try {
@@ -38,6 +42,7 @@ function loadSettings(): Settings {
       quality: raw.quality === "low" || raw.quality === "medium" || raw.quality === "high" ? raw.quality : DEFAULT_SETTINGS.quality,
       sound: typeof raw.sound === "boolean" ? raw.sound : DEFAULT_SETTINGS.sound,
       volume: typeof raw.volume === "number" && raw.volume >= 0 && raw.volume <= 1 ? raw.volume : DEFAULT_SETTINGS.volume,
+      uiSound: typeof raw.uiSound === "boolean" ? raw.uiSound : DEFAULT_SETTINGS.uiSound,
     };
   } catch {
     return DEFAULT_SETTINGS;
@@ -104,6 +109,7 @@ export const useGame = create<Store>((set, get) => {
     setSettings: (partial) => {
       const settings = { ...get().settings, ...partial };
       set({ settings });
+      uiSound.configure({ enabled: settings.sound && settings.uiSound, volume: settings.volume });
       try {
         window.localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
       } catch {
@@ -111,7 +117,10 @@ export const useGame = create<Store>((set, get) => {
       }
     },
     setDynoRunning: (dynoRunning) => set({ dynoRunning }),
-    updateCosmetics: (c) => commit(setCosmetics(get().game, c)),
+    updateCosmetics: (c) => {
+      uiSound.spray();
+      commit(setCosmetics(get().game, c));
+    },
     load: () => {
       let raw: string | null = null;
       try {
@@ -121,7 +130,9 @@ export const useGame = create<Store>((set, get) => {
       }
       const game = deserialize(raw);
       const lastResult = game.lastRunKey ? simulate(game.build, game.tune) : null;
-      set({ game, loaded: true, lastResult, settings: loadSettings() });
+      const settings = loadSettings();
+      uiSound.configure({ enabled: settings.sound && settings.uiSound, volume: settings.volume });
+      set({ game, loaded: true, lastResult, settings });
     },
     resetSave: () => {
       const game = newGame();
@@ -129,13 +140,13 @@ export const useGame = create<Store>((set, get) => {
       set({ baseline: null, lastResult: null, tab: "workshop", view: "exterior", hoodOpen: false, hoveredSlot: null });
     },
     setTab: (tab) => {
-      if (get().dynoRunning && tab !== "dyno") return;
+      if (get().dynoRunning && tab !== get().tab) return;
       if (tab === "paint") {
         set({ tab, view: "paint", hoodOpen: false });
         return;
       }
       const cur = get().view;
-      const view: CameraView = tab === "dyno" ? "dyno" : tab === "workshop" ? (cur === "dyno" ? "bay" : cur) : "exterior";
+      const view: CameraView = tab === "dyno" ? "dyno" : tab === "drivetrain" ? "drivetrain" : tab === "workshop" ? (cur === "dyno" || cur === "drivetrain" ? "bay" : cur) : "exterior";
       set({ tab, view, hoodOpen: view !== "exterior" ? true : get().hoodOpen });
     },
     selectSlot: (selectedSlot, focus = true) => {
@@ -143,13 +154,30 @@ export const useGame = create<Store>((set, get) => {
       set(focus ? { selectedSlot, view: selectedSlot, hoodOpen: true, tab: "workshop" } : { selectedSlot });
     },
     setView: (view) => set({ view, hoodOpen: view === "exterior" ? get().hoodOpen : view === "paint" ? false : true }),
-    setHoodOpen: (hoodOpen) => set({ hoodOpen }),
+    setHoodOpen: (hoodOpen) => {
+      if (hoodOpen !== get().hoodOpen) uiSound.hood(hoodOpen);
+      set({ hoodOpen });
+    },
     setHovered: (hoveredSlot) => set({ hoveredSlot }),
-    buy: (id) => commit(buyPart(get().game, id)),
-    sell: (id) => commit(sellPart(get().game, id)),
+    buy: (id) => {
+      const next = buyPart(get().game, id);
+      if (next === get().game) return uiSound.deny();
+      uiSound.buy();
+      commit(next);
+    },
+    sell: (id) => {
+      const next = sellPart(get().game, id);
+      if (next === get().game) return uiSound.deny();
+      uiSound.sell();
+      commit(next);
+    },
     install: (id) => {
-      if (get().dynoRunning) return;
-      commit(installPart(get().game, id));
+      if (get().dynoRunning) return uiSound.deny();
+      const next = installPart(get().game, id);
+      const part = findPart(id);
+      if (next === get().game || !part) return uiSound.deny();
+      uiSound.install(part.slot);
+      commit(next);
     },
     updateTune: (t) => {
       if (get().dynoRunning) return;
@@ -163,6 +191,8 @@ export const useGame = create<Store>((set, get) => {
     },
     submit: (challengeId) => {
       const out = submitChallenge(get().game, challengeId);
+      if (out.evaluation?.grade) uiSound.gradeAward(out.evaluation.grade);
+      else uiSound.deny();
       if (out.state !== get().game) commit(out.state);
       return out;
     },

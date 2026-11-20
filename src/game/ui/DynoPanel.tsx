@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
 import { engineAudio } from "../audio";
+import { soundProfile } from "../soundProfile";
 import { dynoLive } from "../dynoLive";
 import { configKey } from "../sim/economy";
 import { lastPoint, LIMITS, sampleCurve, simulate } from "../sim/engine";
@@ -147,7 +148,7 @@ export function DynoPanel() {
     const exhaust = getPart("exhaust", game.build.exhaust);
     const hasTurbo = getPart("turbo", game.build.turbo).maximumFlow > 0;
     const { sound, volume } = useGame.getState().settings;
-    if (sound) engineAudio.start({ volume, exhaustOpen: Math.min(1, Math.max(0, (exhaust.flowCapacity - 0.17) / 0.33)), turbo: hasTurbo });
+    if (sound) engineAudio.start({ volume, profile: soundProfile(game.build) });
     const t0 = performance.now();
     let lastUi = 0;
     setRunning(true);
@@ -174,10 +175,10 @@ export function DynoPanel() {
         // Bounce off the limiter, then lift and coast down.
         const pops = exhaust.id !== "exh-stock";
         dynoLive.pop = pops ? 1 : 0.15;
-        engineAudio.limiter(LIMITER_HOLD_MS / 1000, pops);
+        engineAudio.limiter(LIMITER_HOLD_MS / 1000);
         holdTimer.current = window.setTimeout(() => {
           dynoLive.pop = 0;
-          engineAudio.stop(hasTurbo && result.peakBoostBar > 0.3);
+          engineAudio.stop();
           setRunning(false);
           setDynoRunning(false);
           setLive(null);
@@ -195,7 +196,7 @@ export function DynoPanel() {
     window.clearTimeout(holdTimer.current);
     dynoLive.running = false;
     dynoLive.pop = 0;
-    engineAudio.stop(false);
+    engineAudio.kill();
     setRunning(false);
     setDynoRunning(false);
     setLive(null);
