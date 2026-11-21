@@ -5,24 +5,29 @@ import { dynoLive } from "../dynoLive";
 import type { Cosmetics, PaintFinish, RimStyle } from "../sim/cosmetics";
 import { getPart } from "../sim/parts";
 import { useGame } from "../store";
+import { sculptBody } from "./bodySculpt";
 import { SCENE_COLORS as C, WHEEL } from "./layout";
 
 const ARCH_A = Math.PI + 0.283;
 const ARCH_B = -0.283;
 
-function extrude(shape: THREE.Shape, depth: number, bevel: number, zCenter = 0) {
+/** Extrude a side profile across the car, then sculpt it into the curved body.
+ * `offset` is where the mesh origin sits in car space (the bonnet hangs from its hinge). */
+function extrude(shape: THREE.Shape, depth: number, bevel: number, zCenter = 0, offset: [number, number, number] = [0, 0, 0]) {
   const g = new THREE.ExtrudeGeometry(shape, {
     depth,
+    steps: Math.max(1, Math.round(depth / 0.08)),
     bevelEnabled: true,
     bevelThickness: bevel,
     bevelSize: bevel,
-    bevelSegments: 4,
-    curveSegments: 32,
+    bevelSegments: 5,
+    curveSegments: 40,
   });
   g.translate(0, 0, -depth / 2 + zCenter);
-  g.computeVertexNormals();
-  return g;
+  return sculptBody(g, offset);
 }
+
+const HINGE: [number, number, number] = [0.66, 0.98, 0];
 
 function rearBodyShape() {
   const s = new THREE.Shape();
@@ -492,10 +497,11 @@ export function Coupe({ children }: { children?: React.ReactNode }) {
   const geo = useMemo(
     () => ({
       rear: extrude(rearBodyShape(), 1.74, 0.05),
-      fender: extrude(fenderShape(), 0.2, 0.04),
+      fenderL: extrude(fenderShape(), 0.2, 0.04, 0.78),
+      fenderR: extrude(fenderShape(), 0.2, 0.04, -0.78),
       nose: extrude(upperNoseShape(), 1.22, 0.03),
       valance: extrude(valanceShape(), 1.22, 0.03),
-      hood: extrude(hoodShape(), 1.24, 0.012),
+      hood: extrude(hoodShape(), 1.24, 0.012, 0, HINGE),
       glass: extrude(greenhouseShape(), 1.34, 0.06),
       roof: extrude(roofShape(), 1.16, 0.03),
     }),
@@ -528,7 +534,7 @@ export function Coupe({ children }: { children?: React.ReactNode }) {
     [look.stripe],
   );
   const stripeMat = useStripeMaterial(look.stripeColor);
-  const hoodStripes = useMemo(() => stripeGeo.lanes.map(([w, z]) => extrude(hoodShape(), w, 0.012, z)), [stripeGeo]);
+  const hoodStripes = useMemo(() => stripeGeo.lanes.map(([w, z]) => extrude(hoodShape(), w, 0.012, z, HINGE)), [stripeGeo]);
   useEffect(() => () => hoodStripes.forEach((g) => g.dispose()), [hoodStripes]);
 
   const hood = useRef<THREE.Group>(null);
@@ -552,8 +558,8 @@ export function Coupe({ children }: { children?: React.ReactNode }) {
   return (
     <group>
       <mesh geometry={geo.rear} material={paint} castShadow receiveShadow />
-      <mesh geometry={geo.fender} material={paint} position-z={0.78} castShadow receiveShadow />
-      <mesh geometry={geo.fender} material={paint} position-z={-0.78} castShadow receiveShadow />
+      <mesh geometry={geo.fenderL} material={paint} castShadow receiveShadow />
+      <mesh geometry={geo.fenderR} material={paint} castShadow receiveShadow />
       <mesh geometry={geo.nose} material={paint} castShadow />
       <mesh geometry={geo.valance} material={paint} castShadow />
       <mesh geometry={geo.roof} material={paint} castShadow />

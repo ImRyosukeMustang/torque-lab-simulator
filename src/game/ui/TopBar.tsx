@@ -98,7 +98,7 @@ export function TopBar() {
 }
 
 
-const QUALITY_LABEL: Record<Quality, string> = { high: "High", medium: "Medium", low: "Low" };
+const QUALITY_LABEL: Record<Quality, string> = { ultra: "Ultra", high: "High", medium: "Medium", low: "Low" };
 
 function SettingsMenu() {
   const settings = useGame((s) => s.settings);
@@ -136,7 +136,7 @@ function SettingsMenu() {
           </div>
           <div className="space-y-2">
             <span className="text-sm font-medium">Graphics quality</span>
-            <div className="grid grid-cols-3 gap-1">
+            <div className="grid grid-cols-4 gap-1">
               {(Object.keys(QUALITY_LABEL) as Quality[]).map((q) => (
                 <button
                   key={q}
@@ -152,7 +152,7 @@ function SettingsMenu() {
                 </button>
               ))}
             </div>
-            <p className="text-[11px] leading-snug text-muted-foreground">High adds glow and soft-light effects. Use Low on older laptops and phones.</p>
+            <p className="text-[11px] leading-snug text-muted-foreground">Ultra adds a mirror-polished floor, contact shadows and full-resolution rendering. High keeps the glow and ambient occlusion. Resolution drops automatically if the frame rate falls. Use Low on older laptops and phones.</p>
           </div>
         </PopoverContent>
       </Popover>

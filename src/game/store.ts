@@ -20,7 +20,7 @@ import type { Cosmetics } from "./sim/cosmetics";
 import type { SimResult, SlotId, Tune } from "./sim/types";
 
 export type Tab = "workshop" | "dyno" | "drivetrain" | "paint" | "career";
-export type Quality = "high" | "medium" | "low";
+export type Quality = "ultra" | "high" | "medium" | "low";
 export interface Settings {
   quality: Quality;
   sound: boolean;
@@ -39,7 +39,7 @@ function loadSettings(): Settings {
     const raw = JSON.parse(window.localStorage.getItem(SETTINGS_KEY) ?? "null") as Partial<Settings> | null;
     if (!raw) return DEFAULT_SETTINGS;
     return {
-      quality: raw.quality === "low" || raw.quality === "medium" || raw.quality === "high" ? raw.quality : DEFAULT_SETTINGS.quality,
+      quality: raw.quality === "low" || raw.quality === "medium" || raw.quality === "high" || raw.quality === "ultra" ? raw.quality : DEFAULT_SETTINGS.quality,
       sound: typeof raw.sound === "boolean" ? raw.sound : DEFAULT_SETTINGS.sound,
       volume: typeof raw.volume === "number" && raw.volume >= 0 && raw.volume <= 1 ? raw.volume : DEFAULT_SETTINGS.volume,
       uiSound: typeof raw.uiSound === "boolean" ? raw.uiSound : DEFAULT_SETTINGS.uiSound,

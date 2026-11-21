@@ -42,3 +42,9 @@
 - [ ] Visual customisation: bumpers, spoilers with attachment points
 - [ ] Aerodynamics model and wind tunnel
 - [ ] More platforms, chapters and research points
+
+## Prototype 0.5: full career + graphics (in progress)
+- [x] 50 contracts in 5 chapters, new goal types (cheapest build, coolest exhaust, 0-200, wheel power, power cap)
+- [ ] Calibrate new contract targets from solver results (/tmp/cal solver) and add a known solution for each to game.test.ts (tests still expect 11 contracts)
+- [x] Ultra graphics tier: reflective floor, ambient occlusion, SMAA, adaptive resolution, richer workshop
+- [ ] Verify the sculpted car body in a screenshot
