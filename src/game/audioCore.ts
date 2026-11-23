@@ -1,6 +1,12 @@
 let context: AudioContext | null = null;
 let master: GainNode | null = null;
 let noise: AudioBuffer | null = null;
+let muted = false;
+/** Silence everything (e.g. while an ad plays) without touching the player's volume settings. */
+export function setMasterMuted(m: boolean): void {
+  muted = m;
+  if (master && context) master.gain.setTargetAtTime(m ? 0 : 0.8, context.currentTime, 0.02);
+}
 /** Lazy, gesture-resumed, shared engine/UI context. No browser access during SSR. */
 export function getAudioContext(): AudioContext | null {
   if (typeof window === 'undefined') return null;
@@ -18,7 +24,7 @@ export function getMasterBus(): GainNode | null {
   const ctx = getAudioContext();
   if (!ctx) return null;
   if (!master) {
-    master = ctx.createGain(); master.gain.value = 0.8;
+    master = ctx.createGain(); master.gain.value = muted ? 0 : 0.8;
     const limiter = ctx.createDynamicsCompressor();
     limiter.threshold.value = -8; limiter.knee.value = 5; limiter.ratio.value = 16;
     limiter.attack.value = 0.002; limiter.release.value = 0.12;

@@ -1,3 +1,16 @@
+# AUTOMECH / Torque Lab roadmap
+
+## Current request (Nov 2026)
+- [ ] Fix existing bugs: save validator (two-arg z.record), contract unlock order/consistency, unsolvable contracts + failing tests, default graphics tier
+- [ ] Every existing button works; sound effects on all actions
+- [ ] Drag strip: 2D side-view straight track, rival ghost behind a wall, Christmas tree, launch, manual shifting with tachometer, 1/4 · 1/2 · 1 mile
+- [ ] Rival ghosts at several difficulty levels; races in career mode with correct rewards
+- [ ] Street Rival onboarding (beat a 220 hp rival first, then unlock the full workshop)
+- [ ] Units setting: imperial (mph, lb-ft, °F, ft) or metric
+- [ ] Body kits: aero kit, wide body, spoilers/wings, splitter — realistic drag, downforce, grip and mass effects; visible on the 3D car
+- [ ] 3D FX: exhaust flames on pops, glowing headers/turbo over 850°C EGT, tyre smoke and launch squat, camera shake, shift light
+- [ ] CrazyGames SDK: rewarded ads (+cash, double purse), fullscreen button, touch gas/shift buttons
+
 # AUTOMECH roadmap
 
 ## Prototype 0.1 (done)

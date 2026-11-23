@@ -3,14 +3,17 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { CHALLENGES } from "../sim/challenges";
 import { purchaseBlock, SELL_RATE } from "../sim/economy";
-import { DRIVETRAIN_SLOTS, ENGINE_SLOTS, getPart, partsForSlot, SLOT_HELP, SLOT_LABEL } from "../sim/parts";
+import { BODY_SLOTS, DRIVETRAIN_SLOTS, ENGINE_SLOTS, getPart, partsForSlot, SLOT_HELP, SLOT_LABEL } from "../sim/parts";
 import { useGame } from "../store";
+import { localizeText } from "../units";
 import { fmtCredits, partSpecs } from "./format";
+import { StreetRivalCard } from "./RacePanel";
 import { TunePanel } from "./TunePanel";
 
 function ActiveContract() {
   const progress = useGame((s) => s.game.progress);
   const setTab = useGame((s) => s.setTab);
+  const units = useGame((s) => s.settings.units);
   const next = CHALLENGES.find((c) => !progress[c.id]);
   if (!next) return null;
   return (
@@ -32,6 +35,7 @@ function ActiveContract() {
           `≤ ${fmtCredits(next.constraints.maxBudget)}`,
         ]
           .filter(Boolean)
+          .map((x) => localizeText(String(x), units))
           .join("  ·  ")}
       </div>
     </button>
@@ -47,12 +51,13 @@ export function WorkshopPanel() {
   const sell = useGame((s) => s.sell);
   const install = useGame((s) => s.install);
   const unlockTitle = (id?: string) => CHALLENGES.find((c) => c.id === id);
+  const units = useGame((s) => s.settings.units);
 
   return (
     <div className="space-y-5 p-4">
-      <ActiveContract />
+      {game.tutorial !== "done" ? <StreetRivalCard /> : <ActiveContract />}
 
-      {([["Engine systems", ENGINE_SLOTS], ["Drivetrain", DRIVETRAIN_SLOTS]] as const).map(([title, slots]) => (
+      {([["Engine systems", ENGINE_SLOTS], ["Drivetrain", DRIVETRAIN_SLOTS], ["Bodywork & aero", BODY_SLOTS]] as const).map(([title, slots]) => (
         <section key={title}>
           <h2 className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{title}</h2>
           <div className="grid grid-cols-1 gap-1">
@@ -102,7 +107,7 @@ export function WorkshopPanel() {
                 {partSpecs(p).map(([k, v]) => (
                   <div key={k} className="flex justify-between gap-2 text-[11px]">
                     <dt className="text-muted-foreground">{k}</dt>
-                    <dd className="font-mono tabular">{v}</dd>
+                    <dd className="font-mono tabular">{localizeText(v, units)}</dd>
                   </div>
                 ))}
               </dl>

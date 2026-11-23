@@ -1,4 +1,6 @@
-import { Coins, Cog, RotateCcw, Gauge, Wrench, Trophy, Paintbrush, Settings2, Volume2, VolumeX } from "lucide-react";
+import { Coins, Cog, RotateCcw, Gauge, Wrench, Trophy, Paintbrush, Settings2, Volume2, VolumeX, Flag, Lock, Maximize, Minimize } from "lucide-react";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,16 +18,23 @@ import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { engineAudio } from "../audio";
-import { configKey } from "../sim/economy";
+import { AD_REWARD, configKey } from "../sim/economy";
 import { buildCost } from "../sim/parts";
-import { useGame, type Quality, type Tab } from "../store";
+import { TUTORIAL_LOCKED_TABS, useGame, type Quality, type Tab } from "../store";
+import type { Units } from "../units";
+import { AdButton } from "./AdButton";
 import { fmtCredits } from "./format";
+
+/** Minimum gap between "free credits" ads, so the offer stays a treat rather than a grind. */
+const AD_COOLDOWN_MS = 3 * 60 * 1000;
+let lastAdAt = -Infinity;
 
 const TABS: { id: Tab; label: string; icon: typeof Wrench }[] = [
   { id: "workshop", label: "Workshop", icon: Wrench },
   { id: "dyno", label: "Dyno Lab", icon: Gauge },
   { id: "drivetrain", label: "Drivetrain", icon: Cog },
-  { id: "paint", label: "Paint Shop", icon: Paintbrush },
+  { id: "paint", label: "Paint & Body", icon: Paintbrush },
+  { id: "race", label: "Drag Strip", icon: Flag },
   { id: "career", label: "Career", icon: Trophy },
 ];
 
@@ -37,36 +46,49 @@ export function TopBar() {
   const lastResult = useGame((s) => s.lastResult);
   const dynoRunning = useGame((s) => s.dynoRunning);
   const fresh = lastResult && game.lastRunKey === configKey(game.build, game.tune);
+  const tutorial = game.tutorial !== "done";
+  const grantCredits = useGame((s) => s.grantCredits);
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(Date.now()), 5000);
+    return () => window.clearInterval(id);
+  }, []);
+  const adReady = now - lastAdAt >= AD_COOLDOWN_MS;
 
   return (
-    <header className="flex h-14 shrink-0 items-center gap-4 border-b border-border bg-sidebar px-4">
+    <header className="flex h-14 shrink-0 items-center gap-2 overflow-x-auto border-b border-border bg-sidebar px-2 sm:gap-4 sm:px-4">
       <div className="flex items-baseline gap-2">
         <span className="font-display text-xl font-bold tracking-[0.2em]">AUTOMECH</span>
-        <span className="hidden font-mono text-[10px] text-muted-foreground sm:inline">PROTOTYPE 0.4</span>
+        <span className="hidden font-mono text-[10px] text-muted-foreground xl:inline">0.6</span>
       </div>
       <nav className="flex items-center gap-1">
-        {TABS.map(({ id, label, icon: Icon }) => (
+        {TABS.map(({ id, label, icon: Icon }) => {
+          const locked = tutorial && TUTORIAL_LOCKED_TABS.includes(id);
+          return (
           <button
             key={id}
-            onClick={() => setTab(id)}
+            onClick={() => (locked ? toast("Beat your Street Rival first", { description: "Win the first drag race to open the full workshop." }) : setTab(id))}
             disabled={dynoRunning && id !== tab}
-            title={dynoRunning && id !== tab ? "Finish or abort the test run first" : label}
+            aria-disabled={locked || undefined}
+            data-sound={locked ? "none" : undefined}
+            title={dynoRunning && id !== tab ? "Finish or abort the test run first" : locked ? `${label}: beat your Street Rival first` : label}
             className={cn(
               "flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40",
               tab === id ? "bg-accent text-foreground" : "text-muted-foreground hover:text-foreground",
             )}
           >
-            <Icon className={cn("h-4 w-4", tab === id && "text-primary")} />
-            <span className="hidden md:inline">{label}</span>
+            {locked ? <Lock className="h-4 w-4 opacity-60" /> : <Icon className={cn("h-4 w-4", tab === id && "text-primary", id === "race" && tutorial && "text-primary")} />}
+            <span className={cn("hidden lg:inline", locked && "opacity-60")}>{label}</span>
           </button>
-        ))}
+          );
+        })}
       </nav>
-      <div className="ml-auto flex items-center gap-4 font-mono text-xs tabular">
-        <div className="hidden flex-col items-end leading-tight lg:flex">
+      <div className="ml-auto flex items-center gap-2 font-mono text-xs tabular sm:gap-3">
+        <div className="hidden flex-col items-end leading-tight 2xl:flex">
           <span className="text-[9px] uppercase tracking-widest text-muted-foreground">Build cost</span>
           <span>{fmtCredits(buildCost(game.build))}</span>
         </div>
-        <div className="hidden flex-col items-end leading-tight lg:flex">
+        <div className="hidden flex-col items-end leading-tight 2xl:flex">
           <span className="text-[9px] uppercase tracking-widest text-muted-foreground">Reliability</span>
           <span>{fresh ? `${lastResult.reliability}%` : "—"}</span>
         </div>
@@ -74,6 +96,21 @@ export function TopBar() {
           <Coins className="h-4 w-4" />
           {fmtCredits(game.credits)}
         </div>
+        <AdButton
+          variant="reward"
+          size="sm"
+          disabled={!adReady}
+          title={adReady ? `Watch a short ad for ${fmtCredits(AD_REWARD)}` : "Next bonus in a few minutes"}
+          onReward={() => {
+            lastAdAt = Date.now();
+            setNow(Date.now());
+            grantCredits(AD_REWARD);
+            toast.success(`+${fmtCredits(AD_REWARD)}`, { description: "Thanks for watching. Spend it in the workshop." });
+          }}
+        >
+          <span className="hidden sm:inline">+{AD_REWARD.toLocaleString("en-US")}</span>
+        </AdButton>
+        <FullscreenButton />
         <SettingsMenu />
         <AlertDialog>
           <AlertDialogTrigger asChild>
@@ -84,7 +121,7 @@ export function TopBar() {
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>Start a new career?</AlertDialogTitle>
-              <AlertDialogDescription>This erases your credits, parts and challenge grades saved in this browser.</AlertDialogDescription>
+              <AlertDialogDescription>This erases your credits, parts, race wins and contract grades saved in this browser.</AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>
@@ -99,6 +136,31 @@ export function TopBar() {
 
 
 const QUALITY_LABEL: Record<Quality, string> = { ultra: "Ultra", high: "High", medium: "Medium", low: "Low" };
+const UNITS_LABEL: Record<Units, string> = { metric: "Metric (km/h, Nm, °C)", imperial: "US (mph, lb-ft, °F)" };
+
+function FullscreenButton() {
+  const [full, setFull] = useState(false);
+  useEffect(() => {
+    const on = () => setFull(Boolean(document.fullscreenElement));
+    document.addEventListener("fullscreenchange", on);
+    return () => document.removeEventListener("fullscreenchange", on);
+  }, []);
+  const supported = typeof document !== "undefined" && Boolean(document.documentElement.requestFullscreen);
+  if (!supported) return null;
+  return (
+    <Button
+      variant="ghost"
+      size="icon"
+      aria-label={full ? "Exit fullscreen" : "Fullscreen"}
+      onClick={() => {
+        if (document.fullscreenElement) void document.exitFullscreen().catch(() => {});
+        else void document.documentElement.requestFullscreen().catch(() => toast.error("Fullscreen is blocked here", { description: "Your browser or the page embedding the game does not allow it." }));
+      }}
+    >
+      {full ? <Minimize /> : <Maximize />}
+    </Button>
+  );
+}
 
 function SettingsMenu() {
   const settings = useGame((s) => s.settings);
@@ -133,6 +195,25 @@ function SettingsMenu() {
               <span className="font-mono text-xs text-muted-foreground">{Math.round(settings.volume * 100)}%</span>
             </div>
             <Slider value={[settings.volume]} min={0} max={1} step={0.05} disabled={!settings.sound} onValueChange={([v]) => v !== undefined && setSettings({ volume: v })} aria-label="Volume" />
+          </div>
+          <div className="space-y-2">
+            <span className="text-sm font-medium">Units</span>
+            <div className="grid grid-cols-1 gap-1">
+              {(Object.keys(UNITS_LABEL) as Units[]).map((u) => (
+                <button
+                  key={u}
+                  type="button"
+                  aria-pressed={settings.units === u}
+                  onClick={() => setSettings({ units: u })}
+                  className={cn(
+                    "rounded-md border px-2 py-1 text-left text-xs font-medium",
+                    settings.units === u ? "border-primary/60 bg-primary/15 text-foreground" : "border-border text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  {UNITS_LABEL[u]}
+                </button>
+              ))}
+            </div>
           </div>
           <div className="space-y-2">
             <span className="text-sm font-medium">Graphics quality</span>

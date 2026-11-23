@@ -1,6 +1,12 @@
 import { create } from "zustand";
 import {
+  addCredits,
+  AD_REWARD,
   buyPart,
+  finishTutorial,
+  recordFreeRace,
+  recordRace,
+  type RaceOutcome,
   deserialize,
   installPart,
   newGame,
@@ -16,10 +22,23 @@ import {
 import { simulate } from "./sim/engine";
 import { findPart } from "./sim/parts";
 import { uiSound } from "./uiSound";
+import { raceSound } from "./raceSound";
+import { portalStorage } from "./crazygames";
+import type { RaceDistance } from "./sim/race";
+import type { Units } from "./units";
 import type { Cosmetics } from "./sim/cosmetics";
 import type { SimResult, SlotId, Tune } from "./sim/types";
 
-export type Tab = "workshop" | "dyno" | "drivetrain" | "paint" | "career";
+export type Tab = "workshop" | "dyno" | "drivetrain" | "paint" | "race" | "career";
+/** Tabs that open after the Street Rival intro race is won. */
+export const TUTORIAL_LOCKED_TABS: Tab[] = ["dyno", "drivetrain", "career"];
+
+/** What the drag strip screen is racing: a career event, or a free run against any unlocked rival. */
+export interface RaceConfig {
+  eventId: string | null;
+  rivalId: string;
+  distance: RaceDistance;
+}
 export type Quality = "ultra" | "high" | "medium" | "low";
 export interface Settings {
   quality: Quality;
@@ -27,12 +46,26 @@ export interface Settings {
   volume: number;
   /** Clicks and workshop sound effects. */
   uiSound: boolean;
+  units: Units;
+  /** Shift automatically at the ideal point in races. */
+  autoShift: boolean;
 }
 export type CameraView = "exterior" | "bay" | "dyno" | "paint" | SlotId;
 
 const SAVE_KEY = "automech.save.v1";
 const SETTINGS_KEY = "automech.settings.v1";
-const DEFAULT_SETTINGS: Settings = { quality: "high", sound: true, volume: 0.7, uiSound: true };
+// Medium by default: Chromebooks and integrated GPUs are a large share of web players.
+const DEFAULT_SETTINGS: Settings = { quality: "medium", sound: true, volume: 0.7, uiSound: true, units: defaultUnits(), autoShift: false };
+
+/** US, Liberia and Myanmar browsers default to imperial; everyone else metric. */
+function defaultUnits(): Units {
+  try {
+    const lang = typeof navigator === "undefined" ? "" : navigator.language || "";
+    return /-(US|LR|MM)$/i.test(lang) ? "imperial" : "metric";
+  } catch {
+    return "metric";
+  }
+}
 
 function loadSettings(): Settings {
   try {
@@ -43,6 +76,8 @@ function loadSettings(): Settings {
       sound: typeof raw.sound === "boolean" ? raw.sound : DEFAULT_SETTINGS.sound,
       volume: typeof raw.volume === "number" && raw.volume >= 0 && raw.volume <= 1 ? raw.volume : DEFAULT_SETTINGS.volume,
       uiSound: typeof raw.uiSound === "boolean" ? raw.uiSound : DEFAULT_SETTINGS.uiSound,
+      units: raw.units === "imperial" || raw.units === "metric" ? raw.units : DEFAULT_SETTINGS.units,
+      autoShift: typeof raw.autoShift === "boolean" ? raw.autoShift : DEFAULT_SETTINGS.autoShift,
     };
   } catch {
     return DEFAULT_SETTINGS;
@@ -79,11 +114,27 @@ interface Store {
   updateTune: (t: Partial<Tune>) => void;
   completeDynoRun: () => void;
   submit: (challengeId: string) => SubmitOutcome;
+  /** Drag strip screen; null when not racing. */
+  race: RaceConfig | null;
+  startRace: (cfg: RaceConfig) => void;
+  exitRace: () => void;
+  /** Record a finished run; pays purses and counts as a measured run of the current build. */
+  finishRace: (cfg: RaceConfig, result: { won: boolean; totalS: number | null; foul: boolean }) => RaceOutcome | null;
+  /** Credits from a rewarded ad (or a doubled purse). */
+  grantCredits: (amount: number) => void;
+  watchAdReward: () => void;
+  skipTutorial: () => void;
 }
 
 function persist(game: GameState) {
+  const raw = serialize(game);
   try {
-    window.localStorage.setItem(SAVE_KEY, serialize(game));
+    portalStorage()?.setItem(SAVE_KEY, raw);
+  } catch {
+    /* portal storage unavailable */
+  }
+  try {
+    window.localStorage.setItem(SAVE_KEY, raw);
   } catch {
     /* storage unavailable: keep playing in memory */
   }
@@ -110,6 +161,7 @@ export const useGame = create<Store>((set, get) => {
       const settings = { ...get().settings, ...partial };
       set({ settings });
       uiSound.configure({ enabled: settings.sound && settings.uiSound, volume: settings.volume });
+      raceSound.configure({ enabled: settings.sound, volume: settings.volume });
       try {
         window.localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
       } catch {
@@ -124,7 +176,7 @@ export const useGame = create<Store>((set, get) => {
     load: () => {
       let raw: string | null = null;
       try {
-        raw = window.localStorage.getItem(SAVE_KEY);
+        raw = portalStorage()?.getItem(SAVE_KEY) ?? window.localStorage.getItem(SAVE_KEY);
       } catch {
         raw = null;
       }
@@ -132,21 +184,24 @@ export const useGame = create<Store>((set, get) => {
       const lastResult = game.lastRunKey ? simulate(game.build, game.tune) : null;
       const settings = loadSettings();
       uiSound.configure({ enabled: settings.sound && settings.uiSound, volume: settings.volume });
-      set({ game, loaded: true, lastResult, settings });
+      raceSound.configure({ enabled: settings.sound, volume: settings.volume });
+      set({ game, loaded: true, lastResult, settings, tab: game.tutorial === "done" ? "workshop" : "workshop", selectedSlot: game.tutorial === "done" ? "intake" : "turbo" });
     },
     resetSave: () => {
       const game = newGame();
       commit(game);
-      set({ baseline: null, lastResult: null, tab: "workshop", view: "exterior", hoodOpen: false, hoveredSlot: null });
+      set({ baseline: null, lastResult: null, tab: "workshop", view: "exterior", hoodOpen: false, hoveredSlot: null, race: null, selectedSlot: "turbo" });
     },
     setTab: (tab) => {
       if (get().dynoRunning && tab !== get().tab) return;
+      if (get().game.tutorial !== "done" && TUTORIAL_LOCKED_TABS.includes(tab)) return uiSound.deny();
+      if (tab !== get().tab) uiSound.tab();
       if (tab === "paint") {
         set({ tab, view: "paint", hoodOpen: false });
         return;
       }
       const cur = get().view;
-      const view: CameraView = tab === "dyno" ? "dyno" : tab === "drivetrain" ? "drivetrain" : tab === "workshop" ? (cur === "dyno" || cur === "drivetrain" ? "bay" : cur) : "exterior";
+        const view: CameraView = tab === "dyno" ? "dyno" : tab === "drivetrain" ? "drivetrain" : tab === "workshop" ? (cur === "dyno" || cur === "drivetrain" ? "bay" : cur) : "exterior";
       set({ tab, view, hoodOpen: view !== "exterior" ? true : get().hoodOpen });
     },
     selectSlot: (selectedSlot, focus = true) => {
@@ -195,6 +250,42 @@ export const useGame = create<Store>((set, get) => {
       else uiSound.deny();
       if (out.state !== get().game) commit(out.state);
       return out;
+    },
+    race: null,
+    startRace: (race) => {
+      if (get().dynoRunning) return uiSound.deny();
+      set({ race });
+    },
+    exitRace: () => {
+      raceSound.stopAll();
+      set({ race: null });
+    },
+    finishRace: (cfg, result) => {
+      let game = get().game;
+      let out: RaceOutcome | null = null;
+      if (!result.foul) {
+        // A completed run measures the current build like a track test.
+        game = recordDynoRun(game);
+        set({ baseline: get().lastResult, lastResult: simulate(game.build, game.tune) });
+      }
+      if (cfg.eventId) {
+        out = recordRace(game, cfg.eventId, { won: result.won && !result.foul, totalS: result.foul ? null : result.totalS });
+        game = out.state;
+      } else if (!result.foul) {
+        game = recordFreeRace(game, `free:${cfg.rivalId}:${cfg.distance}`, result.totalS);
+      }
+      commit(game);
+      return out;
+    },
+    grantCredits: (amount) => {
+      const next = addCredits(get().game, amount);
+      if (next === get().game) return;
+      raceSound.cash();
+      commit(next);
+    },
+    watchAdReward: () => get().grantCredits(AD_REWARD),
+    skipTutorial: () => {
+      commit(finishTutorial(get().game));
     },
   };
 });

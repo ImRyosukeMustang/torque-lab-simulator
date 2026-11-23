@@ -16,12 +16,19 @@ const buttonVariants = cva(
         secondary: "bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80",
         ghost: "hover:bg-accent hover:text-accent-foreground",
         link: "text-primary underline-offset-4 hover:underline",
+        /** Big call-to-action for racing: amber glow. */
+        race: "bg-primary text-primary-foreground font-display text-base uppercase tracking-wider shadow-glow hover:bg-primary/90",
+        /** Rewarded ad offers. */
+        reward: "border border-reward/50 bg-reward/15 text-reward hover:bg-reward/25",
+        /** On-screen pedal and shift paddles for touch screens. */
+        pedal: "select-none touch-none rounded-xl border-2 border-foreground/25 bg-background/55 text-foreground font-display text-lg uppercase tracking-widest backdrop-blur active:bg-primary active:text-primary-foreground data-[pressed=true]:bg-primary data-[pressed=true]:text-primary-foreground",
       },
       size: {
         default: "h-9 px-4 py-2",
         sm: "h-8 rounded-md px-3 text-xs",
         lg: "h-10 rounded-md px-8",
         icon: "h-9 w-9",
+        pedal: "h-20 w-24 sm:h-24 sm:w-28",
       },
     },
     defaultVariants: {

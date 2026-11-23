@@ -2,7 +2,8 @@
 
 export type SlotId =
   | "intake" | "camshaft" | "turbo" | "intercooler" | "injectors" | "fuel" | "exhaust" | "internals" | "cooling" | "ecu"
-  | "gearbox" | "clutch" | "differential" | "drivetrain";
+  | "gearbox" | "clutch" | "differential" | "drivetrain"
+  | "aero" | "wing" | "body";
 
 export type TransmissionType = "manual" | "sequential" | "dct" | "automatic";
 export type DiffType = "open" | "clutch-lsd" | "helical-lsd";
@@ -176,6 +177,36 @@ export interface DrivetrainPart extends PartBase {
   frontWeightShift: number;
 }
 
+/** Bodywork that changes the car's aerodynamics, mass and tyre width. All values are changes from the factory body. */
+interface BodyworkBase extends PartBase {
+  /** Change in drag area Cd·A (m²). Factory car: 0.62 m² (Cd 0.33 × 1.88 m²). */
+  dragAreaDelta: number;
+  /** Downforce area -Cl·A (m²): downforce = ½ρv² × this. */
+  downforceArea: number;
+  /** Share of this part's downforce that acts on the front axle (0..1). */
+  downforceFront: number;
+  massKg: number;
+  /** Extra tyre friction from wider rubber the arches can now clear. */
+  gripBonus: number;
+  /** Extra rolling resistance from wider tyres. */
+  rollingDelta: number;
+}
+
+export interface AeroPart extends BodyworkBase {
+  slot: "aero";
+  style: "stock" | "lip" | "gt";
+}
+export interface WingPart extends BodyworkBase {
+  slot: "wing";
+  style: "ducktail" | "lip" | "gt" | "swan";
+}
+export interface BodyPart extends BodyworkBase {
+  slot: "body";
+  style: "stock" | "overfender" | "widebody";
+  /** Extra half-track width (m) the wider arches allow. */
+  trackDelta: number;
+}
+
 export type Part =
   | IntakePart
   | CamshaftPart
@@ -190,7 +221,10 @@ export type Part =
   | GearboxPart
   | ClutchPart
   | DifferentialPart
-  | DrivetrainPart;
+  | DrivetrainPart
+  | AeroPart
+  | WingPart
+  | BodyPart;
 
 export interface PartBySlot {
   intake: IntakePart;
@@ -207,6 +241,9 @@ export interface PartBySlot {
   clutch: ClutchPart;
   differential: DifferentialPart;
   drivetrain: DrivetrainPart;
+  aero: AeroPart;
+  wing: WingPart;
+  body: BodyPart;
 }
 
 /** Installed part id per slot. */

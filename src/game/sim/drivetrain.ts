@@ -62,6 +62,27 @@ export interface DrivetrainSpec {
   frontTorqueShare: number;
   tractionFactor: number;
   revLimit: number;
+  /** Aerodynamics and tyres after body kit changes. */
+  dragCdA: number;
+  downforceArea: number;
+  downforceFront: number;
+  tyreMu: number;
+  rollingCoeff: number;
+}
+
+/** Combined effect of the fitted aero kit, wing and body on drag, downforce, mass and tyres. */
+export function bodyworkSpec(build: Build) {
+  const parts = [getPart("aero", build.aero), getPart("wing", build.wing), getPart("body", build.body)];
+  const downforceArea = parts.reduce((s, p) => s + p.downforceArea, 0);
+  const frontDown = parts.reduce((s, p) => s + p.downforceArea * p.downforceFront, 0);
+  return {
+    dragCdA: VEHICLE.dragCdA + parts.reduce((s, p) => s + p.dragAreaDelta, 0),
+    downforceArea,
+    downforceFront: downforceArea > 0 ? frontDown / downforceArea : 0.5,
+    massKg: parts.reduce((s, p) => s + p.massKg, 0),
+    tyreMu: VEHICLE.tyreMu + parts.reduce((s, p) => s + p.gripBonus, 0),
+    rollingCoeff: VEHICLE.rollingCoeff + parts.reduce((s, p) => s + p.rollingDelta, 0),
+  };
 }
 
 export function drivetrainSpec(build: Build, tune: Tune): DrivetrainSpec {
@@ -69,7 +90,8 @@ export function drivetrainSpec(build: Build, tune: Tune): DrivetrainSpec {
   const clutch = getPart("clutch", build.clutch);
   const diff = getPart("differential", build.differential);
   const dt = getPart("drivetrain", build.drivetrain);
-  const massKg = VEHICLE.baseMassKg + box.weightKg + diff.weightKg + dt.weightKg + (box.integratedClutch ? 0 : clutch.weightKg);
+  const body = bodyworkSpec(build);
+  const massKg = VEHICLE.baseMassKg + box.weightKg + diff.weightKg + dt.weightKg + (box.integratedClutch ? 0 : clutch.weightKg) + body.massKg;
   return {
     ratios: tune.gearRatios,
     finalDrive: tune.finalDrive,
@@ -85,6 +107,11 @@ export function drivetrainSpec(build: Build, tune: Tune): DrivetrainSpec {
     frontTorqueShare: dt.frontTorqueShare,
     tractionFactor: OPEN_DIFF_TRACTION + (1 - OPEN_DIFF_TRACTION) * diff.lockFactor,
     revLimit: tune.revLimit,
+    dragCdA: body.dragCdA,
+    downforceArea: body.downforceArea,
+    downforceFront: body.downforceFront,
+    tyreMu: body.tyreMu,
+    rollingCoeff: body.rollingCoeff,
   };
 }
 
@@ -93,12 +120,18 @@ export function drivetrainEfficiency(build: Build): number {
   return getPart("gearbox", build.gearbox).efficiency * getPart("differential", build.differential).efficiency * getPart("drivetrain", build.drivetrain).efficiency;
 }
 
-const rpmFromSpeed = (v: number, overall: number) => ((v / VEHICLE.tyreRadiusM) * overall * 60) / (2 * Math.PI);
-const speedFromRpm = (rpm: number, overall: number) => (rpm * 2 * Math.PI * VEHICLE.tyreRadiusM) / 60 / overall;
+export const rpmFromSpeed = (v: number, overall: number) => ((v / VEHICLE.tyreRadiusM) * overall * 60) / (2 * Math.PI);
+export const speedFromRpm = (rpm: number, overall: number) => (rpm * 2 * Math.PI * VEHICLE.tyreRadiusM) / 60 / overall;
 
-/** Drag plus rolling resistance (N) at a road speed (m/s). */
-export function roadLoadN(v: number, massKg: number): number {
-  return 0.5 * VEHICLE.airDensity * VEHICLE.dragCdA * v * v + VEHICLE.rollingCoeff * massKg * G;
+/** Drag plus rolling resistance (N) at a road speed (m/s). Downforce adds tyre load, so it adds rolling resistance too. */
+export function roadLoadN(v: number, massKg: number, aero: { dragCdA: number; rollingCoeff: number; downforceArea: number } = { dragCdA: VEHICLE.dragCdA, rollingCoeff: VEHICLE.rollingCoeff, downforceArea: 0 }): number {
+  const q = 0.5 * VEHICLE.airDensity * v * v;
+  return q * aero.dragCdA + aero.rollingCoeff * (massKg * G + q * aero.downforceArea);
+}
+
+/** Engine torque (Nm) at an engine speed, read from the measured curve. */
+export function engineTorqueAt(curve: CurvePoint[], rpm: number): number {
+  return torqueAt(curve, rpm);
 }
 
 /** Engine-limited drive force (N) in a gear at a road speed, ignoring tyre grip. */
@@ -112,13 +145,14 @@ export function driveForceN(spec: DrivetrainSpec, curve: CurvePoint[], gear: num
   return (tq * overall * spec.efficiency) / VEHICLE.tyreRadiusM;
 }
 
-/** Maximum force the driven tyres can transmit (N) at a longitudinal acceleration (m/s²). */
-export function tractionLimitN(spec: DrivetrainSpec, accel: number): number {
+/** Maximum force the driven tyres can transmit (N) at a longitudinal acceleration (m/s²) and road speed (m/s). */
+export function tractionLimitN(spec: DrivetrainSpec, accel: number, v = 0): number {
   const m = spec.massKg + VEHICLE.testLoadKg;
   const transfer = (m * accel * VEHICLE.cgHeightM) / VEHICLE.wheelbaseM;
-  const front = Math.max(0, m * G * spec.frontWeight - transfer);
-  const rear = Math.max(0, m * G * (1 - spec.frontWeight) + transfer);
-  const mu = VEHICLE.tyreMu * spec.tractionFactor;
+  const down = 0.5 * VEHICLE.airDensity * v * v * spec.downforceArea;
+  const front = Math.max(0, m * G * spec.frontWeight - transfer + down * spec.downforceFront);
+  const rear = Math.max(0, m * G * (1 - spec.frontWeight) + transfer + down * (1 - spec.downforceFront));
+  const mu = spec.tyreMu * spec.tractionFactor;
   if (spec.layout === "fwd") return mu * front;
   if (spec.layout === "rwd") return mu * rear;
   // AWD: the fixed torque split saturates whichever axle runs out of grip first.
@@ -175,7 +209,7 @@ export function simulateVehicle(build: Build, tune: Tune, curve: CurvePoint[]): 
       force *= spec.torqueDuringShift;
       shiftLeft -= DT;
     }
-    const grip = tractionLimitN(spec, a);
+    const grip = tractionLimitN(spec, a, v);
     const spinning = force > grip;
     if (spinning) {
       force = grip;
@@ -184,7 +218,7 @@ export function simulateVehicle(build: Build, tune: Tune, curve: CurvePoint[]): 
     // While the clutch slips or the tyres spin, the engine is not being accelerated by the road speed.
     const coupled = !spinning && wheelRpm >= (gear === 0 ? spec.launchRpm : 0);
     const meff = m * (1.04 + (coupled ? ROTATING_INERTIA * overall * overall : 0));
-    a = (force - roadLoadN(v, m)) / meff;
+    a = (force - roadLoadN(v, m, spec)) / meff;
     if (a <= 0 && shiftLeft <= 0 && gear >= n - 1) break; // reached top speed in top gear
     v = Math.max(0, v + a * DT);
     x += v * DT;
@@ -220,7 +254,7 @@ export function simulateVehicle(build: Build, tune: Tune, curve: CurvePoint[]): 
     const vMax = speedFromRpm(spec.revLimit, overall);
     let best = 0;
     for (let vv = 5; vv <= vMax + 1e-6; vv += 0.25) {
-      if (driveForceN(spec, curve, g, Math.min(vv, vMax)) >= roadLoadN(Math.min(vv, vMax), m)) best = Math.min(vv, vMax);
+      if (driveForceN(spec, curve, g, Math.min(vv, vMax)) >= roadLoadN(Math.min(vv, vMax), m, spec)) best = Math.min(vv, vMax);
       else if (vv > 10) break;
     }
     if (best > top) {
@@ -355,7 +389,7 @@ export function tractiveForceCurves(build: Build, tune: Tune, curve: CurvePoint[
   const vTop = speedFromRpm(spec.revLimit, spec.ratios[spec.ratios.length - 1]! * spec.finalDrive) * 3.6;
   for (let kmh = 0; kmh <= vTop + stepKmh; kmh += stepKmh) {
     const v = kmh / 3.6;
-    const row: Record<string, number> = { kmh, load: Math.round(roadLoadN(v, m)) };
+    const row: Record<string, number> = { kmh, load: Math.round(roadLoadN(v, m, spec)) };
     spec.ratios.forEach((r, g) => {
       const overall = r * spec.finalDrive;
       const rpm = rpmFromSpeed(v, overall);

@@ -52,6 +52,8 @@ export const QUALITY = {
 export function GameCanvas() {
   const wrap = useRef<HTMLDivElement>(null);
   const quality = useGame((s) => s.settings.quality);
+  // The drag strip covers the scene: stop rendering it to give the race every frame.
+  const racing = useGame((s) => s.race !== null);
   const q = QUALITY[quality];
   // Adaptive resolution: start at the tier's cap and step down while the frame rate stays low.
   const [dpr, setDpr] = useState(() => Math.min(q.maxDpr, typeof window === "undefined" ? 1 : window.devicePixelRatio || 1));
@@ -61,6 +63,7 @@ export function GameCanvas() {
       <Canvas
         // Remount on quality change so shadow maps and the render pipeline are rebuilt cleanly.
         key={quality}
+        frameloop={racing ? "never" : "always"}
         shadows={quality === "low" ? false : "percentage"}
         dpr={dpr}
         camera={{ position: VIEWS.exterior.camera, fov: 38, near: 0.05, far: 80 }}

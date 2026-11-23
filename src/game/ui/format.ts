@@ -95,5 +95,16 @@ export function partSpecs(p: Part): [string, string][] {
         ["Front torque", `${Math.round(p.frontTorqueShare * 100)}%`],
         ["Weight", `${p.weightKg} kg`],
       ];
+    case "aero":
+    case "wing":
+    case "body": {
+      const rows: [string, string][] = [
+        ["Drag area", p.dragAreaDelta === 0 ? "Factory" : `${p.dragAreaDelta > 0 ? "+" : ""}${p.dragAreaDelta.toFixed(3)} m²`],
+        ["Downforce @ 200 km/h", p.downforceArea > 0 ? `${Math.round(0.5 * 1.2 * (200 / 3.6) ** 2 * p.downforceArea / 9.81)} kg` : "—"],
+        ["Weight", p.massKg ? `+${p.massKg} kg` : "—"],
+      ];
+      if (p.slot === "body") rows.push(["Tyre grip", p.gripBonus ? `+${Math.round((p.gripBonus / 1.05) * 100)}%` : "Factory"]);
+      return rows;
+    }
   }
 }

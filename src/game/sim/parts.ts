@@ -12,7 +12,8 @@ export const ENGINE: EngineSpec = {
 
 export const ENGINE_SLOTS: SlotId[] = ["intake", "camshaft", "turbo", "intercooler", "injectors", "fuel", "exhaust", "internals", "cooling", "ecu"];
 export const DRIVETRAIN_SLOTS: SlotId[] = ["gearbox", "clutch", "differential", "drivetrain"];
-export const SLOT_ORDER: SlotId[] = [...ENGINE_SLOTS, ...DRIVETRAIN_SLOTS];
+export const BODY_SLOTS: SlotId[] = ["aero", "wing", "body"];
+export const SLOT_ORDER: SlotId[] = [...ENGINE_SLOTS, ...DRIVETRAIN_SLOTS, ...BODY_SLOTS];
 
 export const SLOT_LABEL: Record<SlotId, string> = {
   intake: "Air Intake",
@@ -29,6 +30,9 @@ export const SLOT_LABEL: Record<SlotId, string> = {
   clutch: "Clutch",
   differential: "Differential",
   drivetrain: "Drive Layout",
+  aero: "Aero Kit",
+  wing: "Rear Wing",
+  body: "Body & Tyres",
 };
 
 export const SLOT_HELP: Record<SlotId, string> = {
@@ -46,6 +50,9 @@ export const SLOT_HELP: Record<SlotId, string> = {
   clutch: "Couples the engine to the gearbox. If engine torque exceeds its capacity it slips: power never reaches the wheels and the friction plate overheats.",
   differential: "Splits torque between the driven wheels and sets the final-drive ratio. An open diff sends power to the wheel with least grip; an LSD keeps both pushing.",
   drivetrain: "Which wheels are driven. Weight moves to the rear under acceleration: rear-drive gains grip, front-drive loses it, all-wheel drive uses all four tyres but adds weight and losses.",
+  aero: "Front splitter, skirts and diffuser. Downforce presses the tyres into the road at speed for more grip, but every wing and fence also adds drag that costs top speed and trap speed.",
+  wing: "Rear downforce. Grows with the square of speed: little help off the line, a lot at 200 km/h. Big wings add drag, so drag racers often run small spoilers and road racers big wings.",
+  body: "Wider arches let you fit wider tyres: more contact patch, more grip at launch. Flares add frontal area (drag), weight and rolling resistance.",
 };
 
 export const PARTS: Part[] = [
@@ -62,7 +69,7 @@ export const PARTS: Part[] = [
 
   // Turbo
   { id: "turbo-none", slot: "turbo", name: "Naturally Aspirated", description: "No forced induction.", price: 0, compressorEfficiency: 0, turbineEfficiency: 0, maximumFlow: 0, inertia: 0, maximumBoost: 0, islandFlow: 0, islandPr: 0 },
-  { id: "turbo-t25", slot: "turbo", name: "AT-25 Ball Bearing", description: "Small, quick-spooling turbo. Runs out of breath at high flow.", price: 2400, compressorEfficiency: 0.7, turbineEfficiency: 0.68, maximumFlow: 0.2, inertia: 0.6, maximumBoost: 1.1, islandFlow: 0.6, islandPr: 1.9, unlockAfter: "c2" },
+  { id: "turbo-t25", slot: "turbo", name: "AT-25 Ball Bearing", description: "Small, quick-spooling turbo. Runs out of breath at high flow.", price: 2400, compressorEfficiency: 0.7, turbineEfficiency: 0.68, maximumFlow: 0.2, inertia: 0.6, maximumBoost: 1.1, islandFlow: 0.6, islandPr: 1.9 },
   { id: "turbo-t30", slot: "turbo", name: "AT-30 Twin-Scroll", description: "Divided turbine housing keeps exhaust pulses separate, so it spools sooner than its size suggests.", price: 4300, compressorEfficiency: 0.74, turbineEfficiency: 0.76, maximumFlow: 0.26, inertia: 0.75, maximumBoost: 1.4, islandFlow: 0.62, islandPr: 2.1, unlockAfter: "c3" },
   { id: "turbo-t35", slot: "turbo", name: "AT-35 Dual Ball", description: "Mid-frame turbo with a broad efficiency island.", price: 3600, compressorEfficiency: 0.74, turbineEfficiency: 0.72, maximumFlow: 0.3, inertia: 1.0, maximumBoost: 1.6, islandFlow: 0.6, islandPr: 2.2, unlockAfter: "c2" },
   { id: "turbo-t45", slot: "turbo", name: "AT-45 Billet", description: "Large billet-wheel turbo. Huge flow, lazy spool.", price: 5400, compressorEfficiency: 0.77, turbineEfficiency: 0.74, maximumFlow: 0.42, inertia: 1.5, maximumBoost: 2.2, islandFlow: 0.62, islandPr: 2.5, unlockAfter: "c3" },
@@ -129,6 +136,22 @@ export const PARTS: Part[] = [
   { id: "dt-rwd", slot: "drivetrain", name: "Rear-Wheel Drive (OEM)", description: "Front engine, propshaft to a rear axle. Grip grows as weight shifts back under acceleration.", price: 0, layout: "rwd", efficiency: 0.94, weightKg: 22, frontTorqueShare: 0, frontWeightShift: 0 },
   { id: "dt-fwd", slot: "drivetrain", name: "Front-Drive Transaxle Conversion", description: "No propshaft: lighter and more efficient, but the front tyres lose load under acceleration and big torque steers the wheel.", price: 3000, layout: "fwd", efficiency: 0.955, weightKg: 12, frontTorqueShare: 1, frontWeightShift: 0.05, unlockAfter: "c3" },
   { id: "dt-awd", slot: "drivetrain", name: "All-Wheel Drive Conversion", description: "Transfer case, front diff and driveshafts. Four tyres put power down, at the cost of weight and friction.", price: 6500, layout: "awd", efficiency: 0.895, weightKg: 95, frontTorqueShare: 0.4, frontWeightShift: 0.02, unlockAfter: "c7" },
+
+  // Aero kit (changes vs the factory bumpers)
+  { id: "aero-stock", slot: "aero", name: "OEM Bumpers", description: "Factory front bumper and sills. Slight lift at speed, as on most road cars.", price: 0, style: "stock", dragAreaDelta: 0, downforceArea: 0, downforceFront: 0.5, massKg: 0, gripBonus: 0, rollingDelta: 0 },
+  { id: "aero-lip", slot: "aero", name: "Front Lip & Side Skirts", description: "Polyurethane lip and sill extensions. Cleaner underbody flow: a touch less drag and a little front downforce.", price: 650, style: "lip", dragAreaDelta: -0.012, downforceArea: 0.06, downforceFront: 0.9, massKg: 4, gripBonus: 0, rollingDelta: 0 },
+  { id: "aero-gt", slot: "aero", name: "GT Aero Kit", description: "Carbon splitter, dive planes, flat floor and a four-fin diffuser. Real downforce on both axles, paid for with drag.", price: 2600, style: "gt", dragAreaDelta: 0.015, downforceArea: 0.32, downforceFront: 0.55, massKg: 11, gripBonus: 0, rollingDelta: 0, unlockAfter: "c3" },
+
+  // Rear wing
+  { id: "wing-ducktail", slot: "wing", name: "OEM Ducktail", description: "Small factory lip on the boot lid that cancels rear lift.", price: 0, style: "ducktail", dragAreaDelta: 0, downforceArea: 0, downforceFront: 0, massKg: 0, gripBonus: 0, rollingDelta: 0 },
+  { id: "wing-lip", slot: "wing", name: "Carbon Lip Spoiler", description: "Low, sharp trailing edge. Trims drag slightly and adds a little rear grip: the drag-racer's choice.", price: 380, style: "lip", dragAreaDelta: -0.008, downforceArea: 0.05, downforceFront: 0, massKg: 1, gripBonus: 0, rollingDelta: 0 },
+  { id: "wing-gt", slot: "wing", name: "GT Wing 1500 mm", description: "Twin-element adjustable wing on pedestal mounts. Strong rear downforce, noticeable drag.", price: 1800, style: "gt", dragAreaDelta: 0.055, downforceArea: 0.5, downforceFront: 0, massKg: 7, gripBonus: 0, rollingDelta: 0, unlockAfter: "c2" },
+  { id: "wing-swan", slot: "wing", name: "Swan-Neck Race Wing", description: "Top-mounted swan-neck uprights leave the wing's suction side clean: more downforce per unit of drag.", price: 2900, style: "swan", dragAreaDelta: 0.045, downforceArea: 0.62, downforceFront: 0, massKg: 6, gripBonus: 0, rollingDelta: 0, unlockAfter: "c4" },
+
+  // Body width and tyres
+  { id: "body-stock", slot: "body", name: "OEM Body + 225 Tyres", description: "Factory steel arches on 225/45 R18 tyres.", price: 0, style: "stock", dragAreaDelta: 0, downforceArea: 0, downforceFront: 0.5, massKg: 0, gripBonus: 0, rollingDelta: 0, trackDelta: 0 },
+  { id: "body-overfender", slot: "body", name: "Bolt-On Overfenders + 255 Tyres", description: "Riveted fibreglass flares over 255/40 R18 semi-slicks. More grip off the line, a little more drag.", price: 2200, style: "overfender", dragAreaDelta: 0.03, downforceArea: 0, downforceFront: 0.5, massKg: 14, gripBonus: 0.06, rollingDelta: 0.0006, trackDelta: 0.035, unlockAfter: "c2" },
+  { id: "body-wide", slot: "body", name: "Full Wide-Body + 285 Tyres", description: "Moulded wide-body panels and 285/35 R18 tyres. Huge contact patch for launches, more frontal area and weight.", price: 4600, style: "widebody", dragAreaDelta: 0.05, downforceArea: 0.04, downforceFront: 0.3, massKg: 22, gripBonus: 0.11, rollingDelta: 0.0011, trackDelta: 0.06, unlockAfter: "c4" },
 ] as Part[];
 
 
@@ -163,6 +186,9 @@ export const STOCK_BUILD: Build = {
   clutch: "clutch-oem",
   differential: "diff-open",
   drivetrain: "dt-rwd",
+  aero: "aero-stock",
+  wing: "wing-ducktail",
+  body: "body-stock",
 };
 
 export const STOCK_TUNE: Tune = { boostTarget: 0.5, lambdaTarget: 0.85, timingOffset: 0, revLimit: 7000, gearRatios: [3.36, 2.06, 1.42, 1.09, 0.87], finalDrive: 3.91 };

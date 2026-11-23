@@ -1,6 +1,7 @@
 // Credits economy and the save-game shape. Pure: every action returns a new state.
 import { z } from "zod";
-import { CHALLENGES, evaluateChallenge, rewardFor, type Evaluation, type Grade, GRADE_RANK } from "./challenges";
+import { CHALLENGES, evaluateChallenge, isChallengeUnlocked, rewardFor, type Evaluation, type Grade, GRADE_RANK } from "./challenges";
+import { isRaceUnlocked, purseFor, RACE_EVENTS } from "./race";
 import { simulate } from "./engine";
 import { DEFAULT_COSMETICS, type Cosmetics } from "./cosmetics";
 import { clampTune, findPart, getPart, PARTS, SLOT_ORDER, STOCK_BUILD, STOCK_TUNE } from "./parts";
@@ -8,7 +9,9 @@ import type { Build, Tune } from "./types";
 
 export const STARTING_CREDITS = 3000;
 export const SELL_RATE = 0.6;
-export const SAVE_VERSION = 4;
+export const SAVE_VERSION = 5;
+/** Credits paid for watching a rewarded ad. */
+export const AD_REWARD = 2500;
 
 export interface GameState {
   version: number;
@@ -23,6 +26,12 @@ export interface GameState {
   cosmetics: Cosmetics;
   /** Contracts whose client style bonus has already been paid. */
   styleBonusPaid: string[];
+  /** Wins per drag race event. */
+  raceWins: Record<string, number>;
+  /** Best elapsed time from green (s) per race event or free-race key. */
+  raceBest: Record<string, number>;
+  /** New careers start with the Street Rival race; the full workshop opens after the first win. */
+  tutorial: "street-rival" | "done";
 }
 
 export function newGame(): GameState {
@@ -37,7 +46,57 @@ export function newGame(): GameState {
     runCount: 0,
     cosmetics: { ...DEFAULT_COSMETICS },
     styleBonusPaid: [],
+    raceWins: {},
+    raceBest: {},
+    tutorial: "street-rival",
   };
+}
+
+export interface RaceOutcome {
+  state: GameState;
+  purse: number;
+  firstWin: boolean;
+  refused?: "locked";
+}
+
+/** Record a finished race. A win pays the event's purse the first time and a rematch share after that. */
+export function recordRace(state: GameState, eventId: string, result: { won: boolean; totalS: number | null }): RaceOutcome {
+  const ev = RACE_EVENTS.find((e) => e.id === eventId);
+  if (!ev || !isRaceUnlocked(eventId, state.raceWins)) return { state, purse: 0, firstWin: false, refused: "locked" };
+  const prevBest = state.raceBest[eventId];
+  const raceBest = result.totalS !== null && (prevBest === undefined || result.totalS < prevBest) ? { ...state.raceBest, [eventId]: Math.round(result.totalS * 1000) / 1000 } : state.raceBest;
+  if (!result.won) return { state: { ...state, raceBest }, purse: 0, firstWin: false };
+  const wins = state.raceWins[eventId] ?? 0;
+  const purse = purseFor(ev, wins);
+  return {
+    state: {
+      ...state,
+      credits: state.credits + purse,
+      raceWins: { ...state.raceWins, [eventId]: wins + 1 },
+      raceBest,
+      tutorial: eventId === "r1" ? "done" : state.tutorial,
+    },
+    purse,
+    firstWin: wins === 0,
+  };
+}
+
+/** Best time for a free race (no purse). */
+export function recordFreeRace(state: GameState, key: string, totalS: number | null): GameState {
+  if (totalS === null) return state;
+  const prev = state.raceBest[key];
+  if (prev !== undefined && prev <= totalS) return state;
+  return { ...state, raceBest: { ...state.raceBest, [key]: Math.round(totalS * 1000) / 1000 } };
+}
+
+/** Credits from a rewarded ad or a doubled purse. */
+export function addCredits(state: GameState, amount: number): GameState {
+  if (!Number.isFinite(amount) || amount <= 0) return state;
+  return { ...state, credits: state.credits + Math.round(amount) };
+}
+
+export function finishTutorial(state: GameState): GameState {
+  return state.tutorial === "done" ? state : { ...state, tutorial: "done" };
 }
 
 export function setCosmetics(state: GameState, c: Partial<Cosmetics>): GameState {
@@ -110,9 +169,8 @@ export function submitChallenge(state: GameState, challengeId: string): SubmitOu
   const refuse = (refused: SubmitOutcome["refused"]): SubmitOutcome => ({ state, evaluation: null, reward: 0, styleBonus: 0, ...(refused ? { refused } : {}) });
   const ch = CHALLENGES.find((c) => c.id === challengeId);
   if (!ch) return refuse("locked");
-  const idx = CHALLENGES.indexOf(ch);
-  const prevCh = CHALLENGES[idx - 1];
-  if (idx > 0 && prevCh && !state.progress[prevCh.id]) return refuse("locked");
+  // Same rule as the career screen: open once the previous contract is graded, and always open once graded.
+  if (!isChallengeUnlocked(ch, state.progress)) return refuse("locked");
   if (!state.lastRunKey) return refuse("no-run");
   if (state.lastRunKey !== configKey(state.build, state.tune)) return refuse("stale-run");
   const evaluation = evaluateChallenge(ch, state.build, simulate(state.build, state.tune), state.cosmetics);
@@ -158,16 +216,19 @@ const tuneSchema = z.union([
     .transform(({ afrTarget, ...t }) => ({ ...t, lambdaTarget: Math.round((afrTarget / 14.7) * 100) / 100 })),
 ]);
 const saveSchema = z.object({
-  version: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(SAVE_VERSION)]),
+  version: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4), z.literal(SAVE_VERSION)]),
   credits: z.number().finite().min(0),
   owned: z.array(z.string()),
-  build: z.record(z.string()),
+  build: z.record(z.string(), z.string()),
   tune: tuneSchema,
-  progress: z.record(gradeSchema),
+  progress: z.record(z.string(), gradeSchema),
   lastRunKey: z.string().nullable(),
   runCount: z.number().int().min(0),
   cosmetics: z.unknown().optional(),
   styleBonusPaid: z.array(z.string()).optional(),
+  raceWins: z.record(z.string(), z.number().int().min(0)).optional(),
+  raceBest: z.record(z.string(), z.number().positive()).optional(),
+  tutorial: z.enum(["street-rival", "done"]).optional(),
 });
 
 export function serialize(state: GameState): string {
@@ -212,6 +273,10 @@ export function deserialize(raw: string | null): GameState {
       runCount: parsed.runCount,
       cosmetics: cos.success ? cos.data : { ...DEFAULT_COSMETICS },
       styleBonusPaid: (parsed.styleBonusPaid ?? []).filter((id) => CHALLENGES.some((c) => c.id === id)),
+      raceWins: Object.fromEntries(Object.entries(parsed.raceWins ?? {}).filter(([id]) => RACE_EVENTS.some((e) => e.id === id))),
+      raceBest: parsed.raceBest ?? {},
+      // Saves from before the Street Rival intro belong to players who already know the workshop.
+      tutorial: parsed.tutorial ?? "done",
     };
   } catch {
     return newGame();

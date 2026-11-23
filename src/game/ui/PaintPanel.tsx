@@ -15,7 +15,9 @@ import {
   type RimStyle,
   type StripeStyle,
 } from "../sim/cosmetics";
+import { BODY_SLOTS, getPart, SLOT_LABEL } from "../sim/parts";
 import { useGame } from "../store";
+import { ChevronRight } from "lucide-react";
 
 function Section({ title, value, children }: { title: string; value?: string; children: ReactNode }) {
   return (
@@ -85,18 +87,38 @@ export function PaintPanel() {
   const look = useGame((s) => s.game.cosmetics);
   const update = useGame((s) => s.updateCosmetics);
   const setView = useGame((s) => s.setView);
+  const build = useGame((s) => s.game.build);
+  const selectSlot = useGame((s) => s.selectSlot);
 
   return (
     <div className="space-y-3 p-4">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h2 className="font-display text-2xl font-semibold leading-none">Paint Shop</h2>
-          <p className="mt-1 text-xs text-muted-foreground">Styling is free and saved with your career. It never changes the engine's numbers.</p>
+          <p className="mt-1 text-xs text-muted-foreground">Paint is free and never changes the numbers. Body kits are real parts: they change drag, downforce, grip and weight.</p>
         </div>
         <Button variant="ghost" size="sm" onClick={() => update({ ...DEFAULT_COSMETICS })}>
           <RotateCcw /> Factory
         </Button>
       </div>
+
+      <Section title="Body kit" value="Aero, wings, wide body">
+        <div className="grid grid-cols-1 gap-1">
+          {BODY_SLOTS.map((slot) => (
+            <button
+              key={slot}
+              type="button"
+              onClick={() => selectSlot(slot)}
+              className="flex items-center justify-between gap-2 rounded-md border border-border bg-background/40 px-3 py-2 text-left hover:border-primary/50"
+            >
+              <span className="text-sm font-medium">{SLOT_LABEL[slot]}</span>
+              <span className="flex items-center gap-1 truncate text-xs text-muted-foreground">
+                {getPart(slot, build[slot]).name} <ChevronRight className="h-3.5 w-3.5" />
+              </span>
+            </button>
+          ))}
+        </div>
+      </Section>
 
       <Section title="Body colour" value={nameOf(PAINT_PRESETS, look.paint)}>
         <Swatches options={PAINT_PRESETS} value={look.paint} onPick={(paint) => update({ paint })} />

@@ -46,6 +46,9 @@ function installation(slot: SlotId): Hit[] {
     case 'clutch': return [...ratchet(0, 6), hit(0.3, 980, 0.27, 0.14, false, 520)];
     case 'differential': return [hit(0, 170, 0.23, 0.24), hit(0.01, 860, 0.21, 0.13, false), ...ratchet(0.28, 5)];
     case 'drivetrain': return [0, 0.2, 0.43].flatMap((t, i) => [hit(t, 150 + i * 70, 0.19, 0.23), hit(t + 0.01, 760 + i * 120, 0.17, 0.1, false)]);
+    case 'aero': return [hit(0, 520, 0.12, 0.16), ...[0.15, 0.27, 0.39, 0.51].map(t => hit(t, 2600, 0.03, 0.1))];
+    case 'wing': return [...ratchet(0, 5), hit(0.25, 700, 0.18, 0.18), hit(0.27, 1500, 0.14, 0.08, false)];
+    case 'body': return [hit(0, 300, 0.2, 0.2), ...[0.24, 0.32, 0.4, 0.48, 0.56, 0.64].map(t => hit(t, 3100, 0.025, 0.1)), ...ratchet(0.7, 5)];
   }
 }
 export const uiSound = {

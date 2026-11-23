@@ -68,6 +68,14 @@
   --color-grade-silver: var(--grade-silver);
   --color-grade-gold: var(--grade-gold);
   --color-viewport: var(--viewport);
+  --color-reward: var(--reward);
+  --color-tree-amber: var(--tree-amber);
+  --color-tree-green: var(--tree-green);
+  --color-tree-red: var(--tree-red);
+  --color-tree-off: var(--tree-off);
+  --color-ghost: var(--ghost);
+  --color-redline: var(--redline);
+  --shadow-glow: 0 0 24px -4px var(--primary);
   --font-sans: "Barlow", ui-sans-serif, system-ui, sans-serif;
   --font-display: "Barlow Condensed", "Barlow", ui-sans-serif, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, monospace;
@@ -113,6 +121,13 @@
   --grade-silver: oklch(0.8 0.012 250);
   --grade-gold: oklch(0.84 0.15 88);
   --viewport: oklch(0.13 0.006 250);
+  --reward: oklch(0.82 0.15 160);
+  --tree-amber: oklch(0.82 0.17 75);
+  --tree-green: oklch(0.82 0.22 145);
+  --tree-red: oklch(0.63 0.24 27);
+  --tree-off: oklch(0.26 0.01 250);
+  --ghost: oklch(0.86 0.11 210);
+  --redline: oklch(0.63 0.24 27);
   --sidebar: oklch(0.19 0.007 250);
   --sidebar-foreground: oklch(0.93 0.008 250);
   --sidebar-primary: oklch(0.79 0.155 72);
@@ -137,4 +152,38 @@
   .tabular {
     font-variant-numeric: tabular-nums;
   }
+}
+
+@layer utilities {
+  .shadow-glow {
+    box-shadow: var(--shadow-glow);
+  }
+  .tree-lit-amber {
+    background-color: var(--tree-amber);
+    box-shadow: 0 0 18px 2px var(--tree-amber);
+  }
+  .tree-lit-green {
+    background-color: var(--tree-green);
+    box-shadow: 0 0 22px 4px var(--tree-green);
+  }
+  .tree-lit-red {
+    background-color: var(--tree-red);
+    box-shadow: 0 0 22px 4px var(--tree-red);
+  }
+}
+
+@keyframes shift-flash {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0.15; }
+}
+.animate-shift-flash {
+  animation: shift-flash 0.16s linear infinite;
+}
+@keyframes pop-in {
+  0% { transform: scale(0.6); opacity: 0; }
+  60% { transform: scale(1.08); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.animate-pop-in {
+  animation: pop-in 0.35s ease-out both;
 }

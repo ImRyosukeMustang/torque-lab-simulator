@@ -33,6 +33,10 @@ export interface SoundProfile {
   shiftRetained: number; /** Torque retained during shift. */
   clutchClack: number;
   diffChatter: number;
+  /** Wind roar at speed from bodywork drag and wing turbulence. */
+  windNoise: number;
+  /** Tyre roar from wider, softer rubber. */
+  tyreRoar: number;
 }
 const unit = (n: number) => Math.max(0, Math.min(1, n));
 export function soundProfile(build: Build): SoundProfile {
@@ -43,6 +47,7 @@ export function soundProfile(build: Build): SoundProfile {
   const cooling = getPart('cooling', build.cooling), ecu = getPart('ecu', build.ecu);
   const box = getPart('gearbox', build.gearbox), clutch = getPart('clutch', build.clutch);
   const diff = getPart('differential', build.differential), drive = getPart('drivetrain', build.drivetrain);
+  const aero = getPart('aero', build.aero), wing = getPart('wing', build.wing), body = getPart('body', build.body);
   const forced = turbo.maximumFlow > 0;
   return {
     intakeLevel: unit(intake.flowCapacity * 1.8), intakeHz: 150 + intake.flowCapacity * 380,
@@ -65,6 +70,8 @@ export function soundProfile(build: Build): SoundProfile {
     gearPitchFactor: (box.transmission === 'sequential' ? 1.3 : 1.05) + diff.finalDrive * 0.04 + drive.frontTorqueShare * 0.08,
     shiftTimeS: box.shiftTimeS, shiftRetained: box.torqueDuringShift,
     clutchClack: unit(clutch.capacityNm / 1200 + (9 - clutch.weightKg) * 0.06), diffChatter: unit(diff.lockFactor * 0.8),
+    windNoise: unit(0.1 + (aero.dragAreaDelta + wing.dragAreaDelta + body.dragAreaDelta) * 4 + (aero.downforceArea + wing.downforceArea + body.downforceArea) * 0.3),
+    tyreRoar: unit(0.1 + body.gripBonus * 2.5 + body.rollingDelta * 100),
   };
 }
 export function describeSound(p: SoundProfile): string[] {
