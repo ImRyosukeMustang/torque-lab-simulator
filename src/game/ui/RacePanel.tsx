@@ -5,7 +5,7 @@ import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { configKey } from "../sim/economy";
 import { getPart } from "../sim/parts";
-import { isRaceUnlocked, makeRaceCar, purseFor, RACE_DISTANCE_LABEL, RACE_EVENTS, RIVALS, rivalGhost, rivalPower, type RaceDistance } from "../sim/race";
+import { isRaceUnlocked, makeRaceCar, purseFor, RACE_DISTANCE_LABEL, RACE_EVENTS, RIVALS, rivalGhost, rivalPower, rivalRating, ratingTier, type RaceDistance } from "../sim/race";
 import { useGame } from "../store";
 import { pressure } from "../units";
 import { fmtCredits } from "./format";
@@ -59,8 +59,9 @@ export function RacePanel() {
   const key = configKey(game.build, game.tune);
   // Launch window and shift points for the current build (recomputed only when the build changes).
   const car = useMemo(() => makeRaceCar(game.build, game.tune), [key]); // eslint-disable-line react-hooks/exhaustive-deps
-  const unlockedRivals = RIVALS.filter((r) => RACE_EVENTS.some((e) => e.rival === r.id && isRaceUnlocked(e.id, game.raceWins)));
-  const [freeRival, setFreeRival] = useState(unlockedRivals[unlockedRivals.length - 1]?.id ?? "kai");
+  // Free run: every rival is open, strongest last, so players pick their own challenge.
+  const field = useMemo(() => [...RIVALS].sort((a, b) => rivalRating(a.id) - rivalRating(b.id)), []);
+  const [freeRival, setFreeRival] = useState("kai");
   const [freeDist, setFreeDist] = useState<RaceDistance>("quarter");
   const powers = useMemo(() => Object.fromEntries(RIVALS.map((r) => [r.id, rivalPower(r.id)])), []);
   const wins = Object.values(game.raceWins).filter((n) => n > 0).length;
@@ -140,14 +141,34 @@ export function RacePanel() {
         <h3 className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
           <Gauge className="h-3.5 w-3.5" /> Free run
         </h3>
-        <p className="text-[11px] text-muted-foreground">Practise against any rival you've reached, at any distance. No purse, but your best times are saved.</p>
-        <div className="grid grid-cols-3 gap-1.5">
-          {unlockedRivals.map((r) => (
-            <button key={r.id} type="button" aria-pressed={freeRival === r.id} onClick={() => setFreeRival(r.id)} className={cn("rounded-md border px-2 py-1.5 text-xs font-medium", freeRival === r.id ? "border-ghost/60 bg-ghost/15 text-foreground" : "border-border text-muted-foreground hover:text-foreground")}>
-              {r.name}
-            </button>
-          ))}
-        </div>
+        <p className="text-[11px] text-muted-foreground">Pick any rival by rating (1-99, from their quarter-mile time) and race at any distance. No purse, but your best times are saved.</p>
+        <ul className="max-h-80 space-y-1 overflow-y-auto pr-1" aria-label="Choose a rival">
+          {field.map((r) => {
+            const rating = rivalRating(r.id);
+            const q = rivalGhost(r.id, "quarter").totalS;
+            const on = freeRival === r.id;
+            return (
+              <li key={r.id}>
+                <button type="button" aria-pressed={on} onClick={() => setFreeRival(r.id)} className={cn("flex w-full items-center gap-3 rounded-md border px-2.5 py-1.5 text-left", on ? "border-ghost/70 bg-ghost/15" : "border-border hover:border-ghost/40")}>
+                  <span className={cn("flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-md border font-mono leading-none", on ? "border-ghost text-ghost" : "border-border text-foreground")}>
+                    <span className="text-sm font-semibold tabular">{rating}</span>
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="flex items-baseline gap-1.5">
+                      <span className="text-sm font-semibold">{r.name}</span>
+                      <span className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">{ratingTier(rating)}</span>
+                    </span>
+                    <span className="block truncate text-[11px] text-muted-foreground">{r.car} · {r.tagline}</span>
+                  </span>
+                  <span className="shrink-0 text-right font-mono text-[11px] tabular text-muted-foreground">
+                    <span className="block text-foreground">{Math.round(powers[r.id] ?? 0)} hp</span>
+                    <span className="block">{q ? `${q.toFixed(2)} s` : "—"}</span>
+                  </span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
         <div className="grid grid-cols-3 gap-1.5">
           {DISTANCES.map((d) => (
             <button key={d} type="button" aria-pressed={freeDist === d} onClick={() => setFreeDist(d)} className={cn("rounded-md border px-2 py-1.5 text-xs font-medium", freeDist === d ? "border-primary/60 bg-primary/15 text-foreground" : "border-border text-muted-foreground hover:text-foreground")}>

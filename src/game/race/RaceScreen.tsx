@@ -19,11 +19,13 @@ import {
   RACE_EVENTS,
   RIVALS,
   rivalGhost,
+  rivalBuild,
   rivalRating,
   shiftDown,
   shiftUp,
   stepCar,
   TYRE_RADIUS_M,
+  wantsUpshift,
   type ShiftQuality,
 } from "../sim/race";
 import { soundProfile } from "../soundProfile";
@@ -113,7 +115,7 @@ export function RaceScreen({ cfg }: { cfg: RaceConfig }) {
     const view = newRaceView();
     const look = game.cosmetics;
     const kit = kitOf(game.build);
-    const rivalKit = kitOf({ ...game.build, ...rival.build } as Record<string, string>);
+    const rivalKit = kitOf(rivalBuild(rival).build as unknown as Record<string, string>);
     const rivalTag = `${rival.name.toUpperCase()} · ${rivalRating(rival.id)}`;
     const GLOSS = { matte: 0, satin: 0.3, gloss: 0.6, metallic: 0.8, pearl: 1 } as const;
     let wheel = 0;
@@ -209,8 +211,7 @@ export function RaceScreen({ cfg }: { cfg: RaceConfig }) {
         if (!ended && s.launched && s.finishT === null) onShift(shiftDown(car, s));
       }
       if (!ended && s.launched && s.finishT === null && useGame.getState().settings.autoShift && s.shiftLeft <= 0) {
-        const ideal = car.shiftRpm[s.gear];
-        if (ideal !== undefined && s.rpm >= ideal) onShift(shiftUp(car, s));
+        if (wantsUpshift(car, s)) onShift(shiftUp(car, s));
       }
       // Throttle ramps so taps can feather wheelspin.
       const want = inp.gas && (s.finishT === null || !s.launched) && !ended ? 1 : 0;

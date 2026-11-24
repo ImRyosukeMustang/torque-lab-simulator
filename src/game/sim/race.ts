@@ -436,21 +436,34 @@ export interface RaceRun {
   totalS: number | null;
 }
 
+/**
+ * Automatic upshift decision (rival drivers and the auto-shift assist). Needs road speed as well as
+ * engine rpm: while the clutch slips or the tyres spin off the line the engine sits at launch rpm,
+ * and shifting on that would drop the car into second gear at walking pace and bog it.
+ */
+export function wantsUpshift(car: RaceCar, s: CarState, shiftFactor = 1): boolean {
+  if (!s.launched || s.shiftLeft > 0) return false;
+  const ideal = car.shiftRpm[s.gear];
+  if (ideal === undefined) return false;
+  const at = Math.min(car.revLimit - 20, ideal * shiftFactor);
+  // Ground speed as engine rpm in this gear: tyre spin off the line must not trigger a shift either.
+  const groundRpm = ((s.v / VEHICLE.tyreRadiusM) * car.spec.ratios[s.gear]! * car.spec.finalDrive * 60) / (2 * Math.PI);
+  return s.rpm >= at && groundRpm >= at - 400;
+}
+
 /** Simulate a computer-driven run from the tree going green. */
 export function driveRun(car: RaceCar, skill: DriverSkill, distance: RaceDistance): RaceRun {
   const dist = RACE_DISTANCE_M[distance];
   const s = newCarState();
-  s.t = -1.2;
+  // Stage early so the engine settles at the launch rpm before the light, like a real driver.
+  s.t = -3;
   const launchRpm = clamp(car.idealLaunchRpm * skill.launchFactor, IDLE_RPM + 300, car.revLimit - 100);
   const samples: GhostSample[] = [];
   let nextSample = -1;
   while (s.t < MAX_RACE_S && s.finishT === null) {
     if (!s.launched && s.t >= skill.reactionS) launch(s, car);
     const throttle = s.launched ? 1 : s.rpm < launchRpm ? 1 : 0;
-    if (s.launched && s.shiftLeft <= 0) {
-      const ideal = car.shiftRpm[s.gear];
-      if (ideal !== undefined && s.rpm >= Math.min(car.revLimit - 20, ideal * skill.shiftFactor)) shiftUp(car, s);
-    }
+    if (wantsUpshift(car, s, skill.shiftFactor)) shiftUp(car, s);
     stepCar(car, s, throttle, dist);
     if (s.t >= nextSample) {
       samples.push({ t: s.t, x: s.x, kmh: s.v * 3.6, rpm: s.rpm, gear: s.gear + 1, spin: s.spin, pop: s.pop });
@@ -544,8 +557,8 @@ export const RIVALS: Rival[] = [
   { id: "zed", name: "Zed", car: "AWD sequential", tagline: "Dog box, all-wheel drive, quick on the tree.", level: 5, paint: "#4b5056",
     build: { intake: "intake-hf", camshaft: "cam-race", turbo: "turbo-t45", intercooler: "ic-w2a", injectors: "inj-1300", fuel: "fuel-e85", ecu: "ecu-standalone", exhaust: "exh-header", internals: "int-race", cooling: "cool-race", differential: "diff-clutch", gearbox: "gbx-seq6", clutch: "clutch-twin", drivetrain: "dt-awd", body: "body-wide", aero: "aero-lip", wing: "wing-lip" }, tune: { boostTarget: 1.5, lambdaTarget: 0.77, timingOffset: 5, revLimit: 8000, finalDrive: 4.1 },
     skill: { reactionS: 0.2, launchFactor: 1, shiftFactor: 0.99 } },
-  { id: "phantom", name: "Phantom", car: "Sequential AWD monster", tagline: "Nova's spec with a near-perfect light. The final ghost.", level: 7, paint: "#0d1320",
-    build: { intake: "intake-hf", camshaft: "cam-race", turbo: "turbo-t45", intercooler: "ic-w2a", injectors: "inj-1300", fuel: "fuel-e85", ecu: "ecu-standalone", exhaust: "exh-header", internals: "int-race", cooling: "cool-race", differential: "diff-clutch", gearbox: "gbx-seq6", clutch: "clutch-twin", drivetrain: "dt-awd", body: "body-wide", aero: "aero-lip", wing: "wing-lip" }, tune: { boostTarget: 1.85, lambdaTarget: 0.76, timingOffset: 6, revLimit: 8200, finalDrive: 4.3 },
+  { id: "phantom", name: "Phantom", car: "Sequential AWD monster", tagline: "Nova's engine, widebody grip, no wing drag. Near-perfect light. The final ghost.", level: 7, paint: "#0d1320",
+    build: { intake: "intake-hf", camshaft: "cam-race", turbo: "turbo-t45", intercooler: "ic-w2a", injectors: "inj-1300", fuel: "fuel-e85", ecu: "ecu-standalone", exhaust: "exh-header", internals: "int-race", cooling: "cool-race", differential: "diff-clutch", gearbox: "gbx-seq6", clutch: "clutch-twin", drivetrain: "dt-awd", body: "body-wide" }, tune: { boostTarget: 2.0, lambdaTarget: 0.75, timingOffset: 6, revLimit: 8400, finalDrive: 4.3 },
     skill: { reactionS: 0.1, launchFactor: 1, shiftFactor: 1 } },
 ];
 

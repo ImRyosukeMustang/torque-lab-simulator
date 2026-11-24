@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { addCredits, AD_REWARD, deserialize, newGame, recordRace, serialize } from "./economy";
 import { simulate } from "./engine";
 import { clampTune, STOCK_BUILD, STOCK_TUNE } from "./parts";
-import { driveRun, isRaceUnlocked, launch, makeRaceCar, newCarState, purseFor, RACE_DISTANCE_M, RACE_EVENTS, rivalGhost, stepCar } from "./race";
+import { driveRun, isRaceUnlocked, launch, makeRaceCar, newCarState, purseFor, RACE_DISTANCE_M, RACE_EVENTS, RIVALS, rivalBuild, rivalGhost, rivalRating, stepCar } from "./race";
 
 const perfect = { reactionS: 0.2, launchFactor: 1, shiftFactor: 1 };
 const stockCar = makeRaceCar(STOCK_BUILD, STOCK_TUNE);
@@ -99,5 +99,46 @@ describe("race rewards", () => {
     expect(AD_REWARD).toBe(2500);
     expect(addCredits(newGame(), AD_REWARD).credits).toBe(3000 + 2500);
     expect(addCredits(newGame(), -5).credits).toBe(3000);
+  });
+});
+
+describe("rival field", () => {
+  it("there are 15 rivals, each rated 1-99", () => {
+    expect(RIVALS).toHaveLength(15);
+    for (const r of RIVALS) {
+      const rating = rivalRating(r.id);
+      expect(rating).toBeGreaterThanOrEqual(1);
+      expect(rating).toBeLessThanOrEqual(99);
+    }
+  });
+
+  it("a faster quarter mile means a higher rating", () => {
+    const sorted = [...RIVALS].sort((a, b) => rivalGhost(a.id, "quarter").totalS! - rivalGhost(b.id, "quarter").totalS!);
+    for (let i = 1; i < sorted.length; i++) expect(rivalRating(sorted[i]!.id)).toBeLessThanOrEqual(rivalRating(sorted[i - 1]!.id));
+  });
+
+  it("a rival without a body kit races on the stock body, not the player's", () => {
+    expect(rivalBuild(RIVALS.find((r) => r.id === "kai")!).build.body).toBe(STOCK_BUILD.body);
+  });
+
+  it("lighter wheels run a quicker quarter mile than heavy ones", () => {
+    const light = driveRun(makeRaceCar(STOCK_BUILD, STOCK_TUNE, undefined, { rimStyle: "mesh" }), perfect, "quarter");
+    const heavy = driveRun(makeRaceCar(STOCK_BUILD, STOCK_TUNE, undefined, { rimStyle: "dish" }), perfect, "quarter");
+    expect(light.totalS!).toBeLessThan(heavy.totalS!);
+  });
+});
+
+describe("ghost driving", () => {
+  it("a ghost never shifts into second while the clutch is still slipping off the line", () => {
+    for (const r of RIVALS) {
+      const early = rivalGhost(r.id, "quarter").samples.find((s) => s.gear >= 2);
+      expect(early?.kmh ?? 999).toBeGreaterThan(25);
+    }
+  });
+
+  it("Nova and Phantom are Legend-rated (85+), Phantom the fastest", () => {
+    expect(rivalRating("nova")).toBeGreaterThanOrEqual(85);
+    expect(rivalRating("phantom")).toBeGreaterThanOrEqual(85);
+    for (const r of RIVALS) expect(rivalGhost("phantom", "quarter").totalS!).toBeLessThanOrEqual(rivalGhost(r.id, "quarter").totalS!);
   });
 });
