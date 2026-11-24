@@ -58,8 +58,8 @@ export const SLOT_HELP: Record<SlotId, string> = {
 export const PARTS: Part[] = [
   // Intake
   { id: "intake-stock", slot: "intake", name: "OEM Airbox", description: "Quiet, paper-element airbox with a narrow snorkel.", price: 0, flowCapacity: 0.14 },
-  { id: "intake-cai", slot: "intake", name: "Cold Air Intake", description: "Shielded cone filter drawing from the bumper.", price: 450, flowCapacity: 0.22 },
-  { id: "intake-hf", slot: "intake", name: "High-Flow Intake + 70mm Throttle", description: "Large-bore pipework and an oversized throttle body.", price: 950, flowCapacity: 0.36 },
+  { id: "intake-cai", massDeltaKg: -1, slot: "intake", name: "Cold Air Intake", description: "Shielded cone filter drawing from the bumper.", price: 450, flowCapacity: 0.22 },
+  { id: "intake-hf", massDeltaKg: -1.5, slot: "intake", name: "High-Flow Intake + 70mm Throttle", description: "Large-bore pipework and an oversized throttle body.", price: 950, flowCapacity: 0.36 },
 
   // Camshaft
   { id: "cam-stock", slot: "camshaft", name: "OEM Cams", description: "Mild profile tuned for drivability.", price: 0, durationDeg: 228, liftMm: 9.2, peakVE: 0.95, peakRpm: 4800, spreadLow: 3400, spreadHigh: 3600, valvetrainLimit: 7200 },
@@ -69,51 +69,51 @@ export const PARTS: Part[] = [
 
   // Turbo
   { id: "turbo-none", slot: "turbo", name: "Naturally Aspirated", description: "No forced induction.", price: 0, compressorEfficiency: 0, turbineEfficiency: 0, maximumFlow: 0, inertia: 0, maximumBoost: 0, islandFlow: 0, islandPr: 0 },
-  { id: "turbo-t25", slot: "turbo", name: "AT-25 Ball Bearing", description: "Small, quick-spooling turbo. Runs out of breath at high flow.", price: 2400, compressorEfficiency: 0.7, turbineEfficiency: 0.68, maximumFlow: 0.2, inertia: 0.6, maximumBoost: 1.1, islandFlow: 0.6, islandPr: 1.9 },
-  { id: "turbo-t30", slot: "turbo", name: "AT-30 Twin-Scroll", description: "Divided turbine housing keeps exhaust pulses separate, so it spools sooner than its size suggests.", price: 4300, compressorEfficiency: 0.74, turbineEfficiency: 0.76, maximumFlow: 0.26, inertia: 0.75, maximumBoost: 1.4, islandFlow: 0.62, islandPr: 2.1, unlockAfter: "c3" },
-  { id: "turbo-t35", slot: "turbo", name: "AT-35 Dual Ball", description: "Mid-frame turbo with a broad efficiency island.", price: 3600, compressorEfficiency: 0.74, turbineEfficiency: 0.72, maximumFlow: 0.3, inertia: 1.0, maximumBoost: 1.6, islandFlow: 0.6, islandPr: 2.2, unlockAfter: "c2" },
-  { id: "turbo-t45", slot: "turbo", name: "AT-45 Billet", description: "Large billet-wheel turbo. Huge flow, lazy spool.", price: 5400, compressorEfficiency: 0.77, turbineEfficiency: 0.74, maximumFlow: 0.42, inertia: 1.5, maximumBoost: 2.2, islandFlow: 0.62, islandPr: 2.5, unlockAfter: "c3" },
+  { id: "turbo-t25", massDeltaKg: 13, slot: "turbo", name: "AT-25 Ball Bearing", description: "Small, quick-spooling turbo. Runs out of breath at high flow.", price: 2400, compressorEfficiency: 0.7, turbineEfficiency: 0.68, maximumFlow: 0.2, inertia: 0.6, maximumBoost: 1.1, islandFlow: 0.6, islandPr: 1.9 },
+  { id: "turbo-t30", massDeltaKg: 15, slot: "turbo", name: "AT-30 Twin-Scroll", description: "Divided turbine housing keeps exhaust pulses separate, so it spools sooner than its size suggests.", price: 4300, compressorEfficiency: 0.74, turbineEfficiency: 0.76, maximumFlow: 0.26, inertia: 0.75, maximumBoost: 1.4, islandFlow: 0.62, islandPr: 2.1, unlockAfter: "c3" },
+  { id: "turbo-t35", massDeltaKg: 17, slot: "turbo", name: "AT-35 Dual Ball", description: "Mid-frame turbo with a broad efficiency island.", price: 3600, compressorEfficiency: 0.74, turbineEfficiency: 0.72, maximumFlow: 0.3, inertia: 1.0, maximumBoost: 1.6, islandFlow: 0.6, islandPr: 2.2, unlockAfter: "c2" },
+  { id: "turbo-t45", massDeltaKg: 21, slot: "turbo", name: "AT-45 Billet", description: "Large billet-wheel turbo. Huge flow, lazy spool.", price: 5400, compressorEfficiency: 0.77, turbineEfficiency: 0.74, maximumFlow: 0.42, inertia: 1.5, maximumBoost: 2.2, islandFlow: 0.62, islandPr: 2.5, unlockAfter: "c3" },
 
   // Intercooler
   { id: "ic-none", slot: "intercooler", name: "No Intercooler", description: "Compressed air goes straight to the engine.", price: 0, effectiveness: 0, pressureDrop: 0, sinkOffsetK: 0 },
-  { id: "ic-small", slot: "intercooler", name: "Bar & Plate 450mm", description: "Compact front-mount core.", price: 650, effectiveness: 0.62, pressureDrop: 0.06, sinkOffsetK: 0, unlockAfter: "c2" },
-  { id: "ic-large", slot: "intercooler", name: "Bar & Plate 600mm Race", description: "Large core, high effectiveness, slightly more pressure drop.", price: 1300, effectiveness: 0.8, pressureDrop: 0.08, sinkOffsetK: 0, unlockAfter: "c3" },
-  { id: "ic-w2a", slot: "intercooler", name: "Water-to-Air Chargecooler", description: "Liquid-cooled core in the intake tract: short pipework, very effective cooling.", price: 2000, effectiveness: 0.88, pressureDrop: 0.05, sinkOffsetK: 8, unlockAfter: "c4" },
+  { id: "ic-small", massDeltaKg: 7, slot: "intercooler", name: "Bar & Plate 450mm", description: "Compact front-mount core.", price: 650, effectiveness: 0.62, pressureDrop: 0.06, sinkOffsetK: 0, unlockAfter: "c2" },
+  { id: "ic-large", massDeltaKg: 11, slot: "intercooler", name: "Bar & Plate 600mm Race", description: "Large core, high effectiveness, slightly more pressure drop.", price: 1300, effectiveness: 0.8, pressureDrop: 0.08, sinkOffsetK: 0, unlockAfter: "c3" },
+  { id: "ic-w2a", massDeltaKg: 13, slot: "intercooler", name: "Water-to-Air Chargecooler", description: "Liquid-cooled core in the intake tract: short pipework, very effective cooling.", price: 2000, effectiveness: 0.88, pressureDrop: 0.05, sinkOffsetK: 8, unlockAfter: "c4" },
 
   // Injectors
   { id: "inj-stock", slot: "injectors", name: "OEM 290cc", description: "Factory injectors sized for the stock engine.", price: 0, flowCc: 290 },
   { id: "inj-440", slot: "injectors", name: "440cc High-Impedance", description: "Supports a mild turbo build.", price: 520, flowCc: 440 },
   { id: "inj-750", slot: "injectors", name: "750cc", description: "Room for serious boost.", price: 880, flowCc: 750, unlockAfter: "c2" },
   { id: "inj-1000", slot: "injectors", name: "1000cc Motorsport", description: "Massive flow. Idle quality suffers, power does not.", price: 1250, flowCc: 1000, unlockAfter: "c3" },
-  { id: "inj-1300", slot: "injectors", name: "1300cc + Twin Pumps", description: "Ethanol-rated injectors with twin in-tank pumps for big E85 builds.", price: 1700, flowCc: 1300, unlockAfter: "c4" },
+  { id: "inj-1300", massDeltaKg: 2, slot: "injectors", name: "1300cc + Twin Pumps", description: "Ethanol-rated injectors with twin in-tank pumps for big E85 builds.", price: 1700, flowCc: 1300, unlockAfter: "c4" },
 
   // Fuel
   { id: "fuel-95", slot: "fuel", name: "Pump 95 RON", description: "Standard unleaded from any forecourt.", price: 0, octane: 95, stoichAfr: 14.7, lhvMjKg: 43.4, latentHeatKjKg: 350, egtOffsetC: 0 },
   { id: "fuel-98", slot: "fuel", name: "Premium 98 RON", description: "Higher-octane pump fuel: a little more knock headroom.", price: 250, octane: 98, stoichAfr: 14.7, lhvMjKg: 43.2, latentHeatKjKg: 360, egtOffsetC: 0 },
   { id: "fuel-race", slot: "fuel", name: "Race Fuel 102 RON", description: "Leaded race gasoline. Strong knock resistance, slightly cooler burn.", price: 900, octane: 102, stoichAfr: 14.7, lhvMjKg: 44.0, latentHeatKjKg: 380, egtOffsetC: -10, unlockAfter: "c3" },
-  { id: "fuel-e85", slot: "fuel", name: "E85 Ethanol Conversion", description: "Flex sensor, ethanol-safe lines and E85. Huge knock resistance and charge cooling, but needs about 45% more injector flow.", price: 1400, octane: 105, stoichAfr: 9.8, lhvMjKg: 29.2, latentHeatKjKg: 850, egtOffsetC: -45, unlockAfter: "c3" },
+  { id: "fuel-e85", massDeltaKg: 3, slot: "fuel", name: "E85 Ethanol Conversion", description: "Flex sensor, ethanol-safe lines and E85. Huge knock resistance and charge cooling, but needs about 45% more injector flow.", price: 1400, octane: 105, stoichAfr: 9.8, lhvMjKg: 29.2, latentHeatKjKg: 850, egtOffsetC: -45, unlockAfter: "c3" },
 
   // Exhaust
   { id: "exh-stock", slot: "exhaust", name: "OEM Exhaust", description: "Two catalysts and two silencers.", price: 0, flowCapacity: 0.17, spoolAssist: 0 },
-  { id: "exh-catback", slot: "exhaust", name: "Sport Cat-Back 2.5in", description: "Free-flowing rear section with a single silencer.", price: 700, flowCapacity: 0.26, spoolAssist: 0.03 },
-  { id: "exh-3in", slot: "exhaust", name: "3in Turbo-Back System", description: "Full 3-inch system with a high-flow cat.", price: 1350, flowCapacity: 0.42, spoolAssist: 0.08 },
-  { id: "exh-header", slot: "exhaust", name: "Tubular Manifold + 3.5in", description: "Equal-length tubular manifold and a 3.5-inch system. Best flow and spool, but loud.", price: 2300, flowCapacity: 0.5, spoolAssist: 0.12, unlockAfter: "c4" },
+  { id: "exh-catback", massDeltaKg: -5, slot: "exhaust", name: "Sport Cat-Back 2.5in", description: "Free-flowing rear section with a single silencer.", price: 700, flowCapacity: 0.26, spoolAssist: 0.03 },
+  { id: "exh-3in", massDeltaKg: -6, slot: "exhaust", name: "3in Turbo-Back System", description: "Full 3-inch system with a high-flow cat.", price: 1350, flowCapacity: 0.42, spoolAssist: 0.08 },
+  { id: "exh-header", massDeltaKg: -9, slot: "exhaust", name: "Tubular Manifold + 3.5in", description: "Equal-length tubular manifold and a 3.5-inch system. Best flow and spool, but loud.", price: 2300, flowCapacity: 0.5, spoolAssist: 0.12, unlockAfter: "c4" },
 
   // Internals
   { id: "int-stock", slot: "internals", name: "OEM Cast Pistons 9.5:1", description: "Factory cast pistons and powdered-metal rods.", price: 0, compression: 9.5, bmepLimit: 24, frictionBar: 0 },
-  { id: "int-hicomp", slot: "internals", name: "Forged High-Comp 11.0:1", description: "Domed forged pistons for naturally aspirated builds. More efficient, but knock-prone under boost.", price: 1500, compression: 11.0, bmepLimit: 27, frictionBar: 0.02, unlockAfter: "c1" },
-  { id: "int-forged", slot: "internals", name: "Forged Pistons 9.0:1", description: "Dished forged pistons sized for boost.", price: 1800, compression: 9.0, bmepLimit: 30, frictionBar: 0.02, unlockAfter: "c2" },
-  { id: "int-race", slot: "internals", name: "Forged Pistons + H-Beam Rods 8.5:1", description: "Low-compression forged pistons and billet H-beam rods for very high cylinder pressure.", price: 3200, compression: 8.5, bmepLimit: 36, frictionBar: 0.03, unlockAfter: "c4" },
+  { id: "int-hicomp", massDeltaKg: -0.5, slot: "internals", name: "Forged High-Comp 11.0:1", description: "Domed forged pistons for naturally aspirated builds. More efficient, but knock-prone under boost.", price: 1500, compression: 11.0, bmepLimit: 27, frictionBar: 0.02, unlockAfter: "c1" },
+  { id: "int-forged", massDeltaKg: -1, slot: "internals", name: "Forged Pistons 9.0:1", description: "Dished forged pistons sized for boost.", price: 1800, compression: 9.0, bmepLimit: 30, frictionBar: 0.02, unlockAfter: "c2" },
+  { id: "int-race", massDeltaKg: -2, slot: "internals", name: "Forged Pistons + H-Beam Rods 8.5:1", description: "Low-compression forged pistons and billet H-beam rods for very high cylinder pressure.", price: 3200, compression: 8.5, bmepLimit: 36, frictionBar: 0.03, unlockAfter: "c4" },
 
   // Cooling
   { id: "cool-stock", slot: "cooling", name: "OEM Radiator", description: "Single-core plastic-tank radiator and one fan.", price: 0, capacityKw: 260, heatSoakK: 10 },
-  { id: "cool-alu", slot: "cooling", name: "Aluminium Dual-Core Radiator", description: "All-aluminium core with twin fans.", price: 600, capacityKw: 330, heatSoakK: 8 },
-  { id: "cool-race", slot: "cooling", name: "Race Radiator + Oil Cooler", description: "Thick race core, oil cooler and vented bonnet airflow.", price: 1500, capacityKw: 420, heatSoakK: 5, unlockAfter: "c3" },
+  { id: "cool-alu", massDeltaKg: -2, slot: "cooling", name: "Aluminium Dual-Core Radiator", description: "All-aluminium core with twin fans.", price: 600, capacityKw: 330, heatSoakK: 8 },
+  { id: "cool-race", massDeltaKg: 3, slot: "cooling", name: "Race Radiator + Oil Cooler", description: "Thick race core, oil cooler and vented bonnet airflow.", price: 1500, capacityKw: 420, heatSoakK: 5, unlockAfter: "c3" },
 
   // ECU
-  { id: "ecu-stock", slot: "ecu", name: "OEM ECU", description: "Locked factory map. Runs safe fuelling with mild boost control.", price: 0, maxBoostTarget: 0.5, timingRange: 0, lambdaRange: [0.85, 0.85], revLimitRange: [7000, 7000] },
-  { id: "ecu-piggy", slot: "ecu", name: "Piggyback Controller", description: "Adjust boost, fuel and a little ignition on top of the factory map.", price: 750, maxBoostTarget: 1.1, timingRange: 3, lambdaRange: [0.78, 0.92], revLimitRange: [6500, 7400] },
-  { id: "ecu-standalone", slot: "ecu", name: "Standalone ECU", description: "Full control of every map.", price: 1800, maxBoostTarget: 2.2, timingRange: 6, lambdaRange: [0.73, 1.0], revLimitRange: [6000, 8200], unlockAfter: "c2" },
+  { id: "ecu-stock", slot: "ecu", name: "OEM ECU", description: "Locked factory map. Runs safe fuelling with mild boost control.", price: 0, maxBoostTarget: 0.5, timingRange: 0, lambdaRange: [0.85, 0.85], revLimitRange: [7000, 7000], launchControl: false, flatShift: false },
+  { id: "ecu-piggy", slot: "ecu", name: "Piggyback Controller", description: "Adjust boost, fuel and a little ignition on top of the factory map. Adds a two-step launch limiter.", price: 750, maxBoostTarget: 1.1, timingRange: 3, lambdaRange: [0.78, 0.92], revLimitRange: [6500, 7400], launchControl: true, flatShift: false },
+  { id: "ecu-standalone", slot: "ecu", name: "Standalone ECU", description: "Full control of every map, two-step launch control and no-lift (flat-foot) shifting.", price: 1800, maxBoostTarget: 2.2, timingRange: 6, lambdaRange: [0.73, 1.0], revLimitRange: [6000, 8200], launchControl: true, flatShift: true, unlockAfter: "c2" },
 
   // Gearbox
   { id: "gbx-oem5", slot: "gearbox", name: "OEM 5-Speed Manual", description: "Wide-ratio road box with synchromesh and a long throw.", price: 0, transmission: "manual", ratios: [3.36, 2.06, 1.42, 1.09, 0.87], adjustable: false, efficiency: 0.955, maxTorqueNm: 420, shiftTimeS: 0.45, torqueDuringShift: 0, weightKg: 40, integratedClutch: false, converterMultiplication: 1, launchRpm: 0 },
@@ -123,9 +123,9 @@ export const PARTS: Part[] = [
   { id: "gbx-seq6", slot: "gearbox", name: "6-Speed Sequential Dog Box", description: "Straight-cut dog-engagement gears: 60 ms shifts, the highest torque capacity and audible gear whine.", price: 7400, transmission: "sequential", ratios: [2.85, 2.05, 1.62, 1.33, 1.12, 0.96], adjustable: true, efficiency: 0.975, maxTorqueNm: 800, shiftTimeS: 0.06, torqueDuringShift: 0, weightKg: 34, integratedClutch: false, converterMultiplication: 1, launchRpm: 0, unlockAfter: "c7" },
 
   // Clutch
-  { id: "clutch-oem", slot: "clutch", name: "OEM Organic Clutch", description: "Single organic plate with a light pedal.", price: 0, capacityNm: 400, launchRpm: 3000, weightKg: 9 },
-  { id: "clutch-stage2", slot: "clutch", name: "Stage 2 Kevlar Clutch", description: "Uprated pressure plate and Kevlar facing: more clamp load, still streetable.", price: 650, capacityNm: 520, launchRpm: 3600, weightKg: 9, unlockAfter: "c2" },
-  { id: "clutch-twin", slot: "clutch", name: "Twin-Plate Sintered Clutch", description: "Two sintered plates double the friction area: huge capacity and a hard, aggressive launch.", price: 1600, capacityNm: 800, launchRpm: 4500, weightKg: 7, unlockAfter: "c4" },
+  { id: "clutch-oem", slot: "clutch", name: "OEM Organic Clutch", description: "Single organic plate with a light pedal.", price: 0, capacityNm: 400, launchRpm: 3000, weightKg: 9, engageS: 0.11 },
+  { id: "clutch-stage2", slot: "clutch", name: "Stage 2 Kevlar Clutch", description: "Uprated pressure plate and Kevlar facing: more clamp load, still streetable.", price: 650, capacityNm: 520, launchRpm: 3600, weightKg: 9, engageS: 0.07, unlockAfter: "c2" },
+  { id: "clutch-twin", slot: "clutch", name: "Twin-Plate Sintered Clutch", description: "Two sintered plates double the friction area: huge capacity and a hard, aggressive launch.", price: 1600, capacityNm: 800, launchRpm: 4500, weightKg: 7, engageS: 0.035, unlockAfter: "c4" },
 
   // Differential
   { id: "diff-open", slot: "differential", name: "OEM Open Differential 3.91", description: "Splits torque equally, so the wheel with less grip sets the limit.", price: 0, diffType: "open", lockFactor: 0, efficiency: 0.96, finalDrive: 3.91, finalDriveRange: [3.91, 3.91], weightKg: 30 },

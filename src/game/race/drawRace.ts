@@ -9,8 +9,7 @@ const P = {
   skyLow: "#c0603a",
   city: "#141a26",
   cityLit: "#f2c46a",
-  stand: "#1d222b",
-  crowd: ["#8a8f99", "#c9b08a", "#a34a3a", "#3b6ea8", "#d8d2c4"],
+  field: "#161b1c",
   pole: "#2a2f38",
   lamp: "#ffe9b8",
   asphaltFar: "#2b2e33",
@@ -48,6 +47,14 @@ export interface CarDraw {
   tint: number;
   kit: Kit;
   ghost: boolean;
+  /** Name tag drawn above the car (the rival's name and rating). */
+  label?: string;
+  rimStyle?: "five" | "mesh" | "dish" | "turbine";
+  caliper?: string;
+  stripe?: "none" | "twin" | "center" | "side";
+  stripeColor?: string;
+  /** 0 matte .. 1 pearl: strength of the paint's highlight. */
+  gloss?: number;
 }
 
 interface Particle {
@@ -97,7 +104,7 @@ export function drawRace(
   view: RaceView,
   frame: { t: number; player: CarDraw; rival: CarDraw; distance: number; units: Units; dt: number },
 ) {
-  const S = Math.max(14, Math.min(34, w / 34)); // px per metre
+  const S = Math.max(20, Math.min(56, w / 21)); // px per metre: close on the cars, no grandstand
   const { player, rival, distance, dt } = frame;
   const camX = player.x - (w * 0.34) / S;
   view.shake = Math.max(0, view.shake - dt * 3);
@@ -125,19 +132,9 @@ export function drawRace(
     for (let k = 0; k < 6; k++) if (hash(i * 13 + k) > 0.55) ctx.fillRect(bx + 6 + (k % 3) * 11, horizon - bh + 8 + Math.floor(k / 3) * 14, 4, 5);
   }
 
-  // Grandstand with crowd (mid parallax)
-  const standTop = h * 0.38;
-  const standOff = camX * S * 0.3;
-  ctx.fillStyle = P.stand;
-  ctx.fillRect(-20, standTop, w + 40, horizon - standTop + h * 0.08);
-  for (let i = Math.floor(standOff / 7); i < Math.floor(standOff / 7) + w / 7 + 2; i++) {
-    for (let row = 0; row < 4; row++) {
-      if (hash(i * 7 + row) < 0.3) continue;
-      ctx.fillStyle = P.crowd[Math.floor(hash(i + row * 31) * P.crowd.length)]!;
-      const bob = Math.sin(frame.t * 6 + i) * (player.kmh > 20 ? 1.2 : 0.3);
-      ctx.fillRect(i * 7 - standOff + (row % 2) * 3, standTop + 4 + row * 9 + bob, 4, 6);
-    }
-  }
+  // Infield between the skyline and the strip
+  ctx.fillStyle = P.field;
+  ctx.fillRect(-20, horizon, w + 40, h * 0.53 - horizon);
 
   // Light poles (near parallax)
   const poleOff = camX * S * 0.6;
@@ -154,19 +151,20 @@ export function drawRace(
   }
 
   // Far lane (rival) asphalt
-  const rivalGround = h * 0.655;
+  const rivalGround = h * 0.66;
+  const rS = S * 0.94;
   ctx.fillStyle = P.asphaltFar;
   ctx.fillRect(-20, h * 0.52, w + 40, h * 0.13);
   drawLaneMarks(ctx, sx, camX, w, S, h * 0.6, distance, 0.7);
 
   // Rival car (behind the wall)
-  const rS = S * 0.82;
   drawSmoke(ctx, view, sx, S, 1, rivalGround);
   drawCar(ctx, (rival.x - camX) * S, rivalGround, rS, rival);
 
   // Centre wall: hides the rival's wheels, like a real strip's concrete divider.
-  const wallTop = h * 0.625;
-  const wallBot = h * 0.7;
+  // Low enough that the rival's whole body shows above it; only the tyres are hidden.
+  const wallTop = rivalGround - rS * 0.4;
+  const wallBot = h * 0.71;
   ctx.fillStyle = P.wallShade;
   ctx.fillRect(-20, wallTop, w + 40, wallBot - wallTop);
   ctx.fillStyle = P.wall;
@@ -182,13 +180,23 @@ export function drawRace(
   for (const [m, label] of boards(distance, frame.units)) {
     const bx = sx(m);
     if (bx < -80 || bx > w + 80) continue;
+    const bw = Math.max(52, S * 1.9);
+    const bh = Math.max(22, S * 0.62);
     ctx.fillStyle = P.trim;
-    ctx.fillRect(bx - 26, wallTop - 26, 52, 22);
+    ctx.fillRect(bx - bw / 2, wallTop - bh - 4, bw, bh);
     ctx.fillStyle = P.lamp;
-    ctx.font = `600 ${Math.round(S * 0.42)}px "JetBrains Mono", monospace`;
+    ctx.font = `600 ${Math.round(Math.max(12, S * 0.36))}px "JetBrains Mono", monospace`;
     ctx.textAlign = "center";
-    ctx.fillText(label, bx, wallTop - 10);
+    ctx.textBaseline = "middle";
+    ctx.fillText(label, bx, wallTop - 4 - bh / 2);
+    ctx.textBaseline = "alphabetic";
     ctx.fillRect(bx - 1, wallTop - 4, 2, 4);
+  }
+
+  // Rival name tag rides above the ghost so it is easy to track.
+  if (rival.label) {
+    const lx = (rival.x - camX) * S;
+    if (lx > -S * 3 && lx < w + S * 3) drawTag(ctx, lx - rS * 0.3, rivalGround - rS * 1.75, rival.label, S);
   }
 
   // Near lane (player) asphalt with rubbered launch area
@@ -320,7 +328,7 @@ function updateSmoke(view: RaceView, dt: number) {
 }
 
 function drawSmoke(ctx: CanvasRenderingContext2D, view: RaceView, sx: (x: number) => number, S: number, lane: 0 | 1, ground: number) {
-  const scale = lane === 1 ? 0.82 : 1;
+  const scale = lane === 1 ? 0.94 : 1;
   for (const p of view.particles) {
     if (p.lane !== lane) continue;
     const a = 0.32 * (1 - p.life / p.max);
@@ -345,7 +353,6 @@ function drawCar(ctx: CanvasRenderingContext2D, cx: number, ground: number, S: n
   const wheels = [1.33, -1.33];
   const pitch = Math.max(-0.035, Math.min(0.06, car.accel * 0.0065));
   ctx.save();
-  if (car.ghost) ctx.globalAlpha = 0.9;
 
   // Body, pitched about the rear axle (launch squat lifts the nose)
   ctx.save();
@@ -354,7 +361,7 @@ function drawCar(ctx: CanvasRenderingContext2D, cx: number, ground: number, S: n
   ctx.translate(-X(-1.33), -Y(wheelR));
   if (car.ghost) {
     ctx.shadowColor = P.ghost;
-    ctx.shadowBlur = 14;
+    ctx.shadowBlur = Math.max(18, S * 0.6);
   }
   const flare = car.kit.body !== "stock";
   ctx.beginPath();
@@ -381,9 +388,22 @@ function drawCar(ctx: CanvasRenderingContext2D, cx: number, ground: number, S: n
   ctx.fillStyle = body;
   ctx.fill();
   ctx.shadowBlur = 0;
+  if (car.stripe && car.stripe !== "none" && car.stripeColor) {
+    ctx.save();
+    ctx.clip();
+    ctx.fillStyle = car.stripeColor;
+    if (car.stripe === "side") ctx.fillRect(X(-2.3), Y(0.6), 4.6 * S, 0.09 * S);
+    else {
+      const band = car.stripe === "twin" ? 0.07 : 0.11;
+      ctx.fillRect(X(0.55), Y(1.0), 1.8 * S, band * S);
+      ctx.fillRect(X(-1.1), Y(1.42), 1.5 * S, band * 1.6 * S);
+      ctx.fillRect(X(-2.3), Y(1.02), 0.55 * S, band * S);
+    }
+    ctx.restore();
+  }
   if (car.ghost) {
     ctx.strokeStyle = P.ghost;
-    ctx.lineWidth = 1.5;
+    ctx.lineWidth = Math.max(2, S * 0.07);
     ctx.stroke();
   }
   // windows
@@ -398,7 +418,7 @@ function drawCar(ctx: CanvasRenderingContext2D, cx: number, ground: number, S: n
   ctx.fillStyle = P.trim;
   ctx.fillRect(X(-0.58), Y(1.28), 0.07 * S, 0.3 * S);
   // shoulder highlight
-  ctx.strokeStyle = "rgba(255,255,255,0.22)";
+  ctx.strokeStyle = `rgba(255,255,255,${0.06 + 0.26 * (car.gloss ?? 0.6)})`;
   ctx.lineWidth = 1;
   ctx.beginPath();
   ctx.moveTo(X(1.9), Y(0.8));
@@ -501,17 +521,31 @@ function drawCar(ctx: CanvasRenderingContext2D, cx: number, ground: number, S: n
     ctx.arc(x, y, wheelR * S * 0.68, 0, Math.PI * 2);
     ctx.fill();
     const blur = Math.min(1, car.kmh / 60);
+    if (car.caliper) {
+      ctx.fillStyle = car.caliper;
+      ctx.beginPath();
+      ctx.arc(x, y, wheelR * S * 0.5, wx > 0 ? -2.4 : -0.75, wx > 0 ? -1.4 : 0.25);
+      ctx.lineTo(x, y);
+      ctx.fill();
+    }
+    const style = car.rimStyle ?? "five";
+    const spokes = style === "mesh" ? 10 : style === "dish" ? 6 : style === "turbine" ? 9 : 5;
     ctx.strokeStyle = car.rim;
-    ctx.lineWidth = Math.max(1.5, S * 0.05);
-    ctx.globalAlpha = (car.ghost ? 0.9 : 1) * (1 - blur * 0.7);
-    for (let k = 0; k < 5; k++) {
-      const a = car.wheelAngle + (k / 5) * Math.PI * 2;
+    ctx.lineWidth = Math.max(1.2, S * (style === "mesh" ? 0.025 : style === "turbine" ? 0.035 : 0.05));
+    ctx.globalAlpha = 1 - blur * 0.7;
+    if (style === "dish") {
+      ctx.beginPath();
+      ctx.arc(x, y, wheelR * S * 0.62, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    for (let k = 0; k < spokes; k++) {
+      const a = car.wheelAngle + (k / spokes) * Math.PI * 2;
       ctx.beginPath();
       ctx.moveTo(x + Math.cos(a) * S * 0.05, y + Math.sin(a) * S * 0.05);
       ctx.lineTo(x + Math.cos(a) * wheelR * S * 0.66, y + Math.sin(a) * wheelR * S * 0.66);
       ctx.stroke();
     }
-    ctx.globalAlpha = car.ghost ? 0.9 : 1;
+    ctx.globalAlpha = 1;
     if (blur > 0.3) {
       ctx.fillStyle = `rgba(200,205,210,${blur * 0.25})`;
       ctx.beginPath();
@@ -560,4 +594,31 @@ function mix(a: string, b: string, t: number): string {
   const pb = parseInt(b.slice(1), 16);
   const ch = (s: number) => Math.round(((pa >> s) & 255) * (1 - t) + ((pb >> s) & 255) * t);
   return `rgb(${ch(16)},${ch(8)},${ch(0)})`;
+}
+
+/** Rounded name tag with a pointer down to the car. */
+function drawTag(ctx: CanvasRenderingContext2D, x: number, y: number, text: string, S: number) {
+  ctx.save();
+  ctx.font = `600 ${Math.round(Math.max(11, S * 0.3))}px "JetBrains Mono", monospace`;
+  const tw = ctx.measureText(text).width + 16;
+  const th = Math.max(18, S * 0.48);
+  ctx.fillStyle = "rgba(8,20,26,0.82)";
+  ctx.strokeStyle = P.ghost;
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.roundRect(x - tw / 2, y - th, tw, th, 4);
+  ctx.fill();
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(x - 5, y);
+  ctx.lineTo(x + 5, y);
+  ctx.lineTo(x, y + 6);
+  ctx.closePath();
+  ctx.fillStyle = P.ghost;
+  ctx.fill();
+  ctx.fillStyle = P.ghost;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(text, x, y - th / 2 + 1);
+  ctx.restore();
 }

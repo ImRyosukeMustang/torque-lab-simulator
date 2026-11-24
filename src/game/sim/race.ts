@@ -4,6 +4,7 @@
 import { bodyworkSpec, drivetrainSpec, engineTorqueAt, roadLoadN, speedFromRpm, tractionLimitN, VEHICLE, type DrivetrainSpec } from "./drivetrain";
 import { simulate } from "./engine";
 import { clampTune, getPart, STOCK_BUILD, STOCK_TUNE } from "./parts";
+import { RIM_MASS_KG, type RimStyle } from "./cosmetics";
 import type { Build, CurvePoint, SimResult, TransmissionType, Tune } from "./types";
 
 export type RaceDistance = "quarter" | "half" | "mile";
@@ -29,8 +30,10 @@ export function tyreGripShare(slip: number): number {
   return Math.max(KINETIC_GRIP, 1 - ((slip - PEAK_SLIP) * (1 - KINETIC_GRIP)) / 0.6);
 }
 const IDLE_RPM = 900;
-/** Time for the clutch to bite fully after it is dropped (s). */
-const CLUTCH_BITE_S = 0.06;
+/** Bite time of a gearbox's built-in launch clutch or converter (s). */
+const INTEGRATED_BITE_S = 0.08;
+/** Flat-foot shifting cuts this share off a manual or sequential shift. */
+const FLAT_SHIFT_SAVING = 0.3;
 /** A shift landing within this many rpm of the ideal shift point counts as perfect. */
 export const PERFECT_SHIFT_RPM = 300;
 
@@ -50,6 +53,20 @@ export interface RaceCar {
   idealLaunchRpm: number;
   launchWindow: [number, number];
   peakPowerHp: number;
+  /** Rotating engine-side inertia (kg·m²): lighter clutches and rods rev quicker. */
+  engineInertia: number;
+  /** Driven-wheel inertia (kg·m²): lighter wheels spin up quicker. */
+  wheelInertia: number;
+  /** Clutch bite time when dropped (s). */
+  clutchEngageS: number;
+  /** Two-step launch limiter rpm while staged (0 = none). */
+  launchControlRpm: number;
+  flatShift: boolean;
+}
+
+export interface RaceCarOptions {
+  /** Wheel style: wheel weight changes the car's mass and rotating inertia. */
+  rimStyle?: RimStyle;
 }
 
 export interface CarState {
@@ -115,14 +132,18 @@ export function optimalShiftRpm(car: Pick<RaceCar, "spec" | "curve" | "revLimit"
   return out;
 }
 
-export function makeRaceCar(build: Build, tune: Tune, result: SimResult = simulate(build, tune)): RaceCar {
+export function makeRaceCar(build: Build, tune: Tune, result: SimResult = simulate(build, tune), opts: RaceCarOptions = {}): RaceCar {
   const t = clampTune(build, tune);
   const spec = drivetrainSpec(build, t);
   const box = getPart("gearbox", build.gearbox);
+  const clutch = getPart("clutch", build.clutch);
+  const ecu = getPart("ecu", build.ecu);
+  const internals = getPart("internals", build.internals);
+  const rimDelta = RIM_MASS_KG[opts.rimStyle ?? "five"] - RIM_MASS_KG.five;
   const car: RaceCar = {
     spec,
     curve: result.curve,
-    massKg: spec.massKg + VEHICLE.testLoadKg,
+    massKg: spec.massKg + VEHICLE.testLoadKg + 4 * rimDelta,
     transmission: box.transmission,
     integratedClutch: box.integratedClutch,
     launchHoldRpm: box.integratedClutch ? box.launchRpm : 0,
@@ -132,11 +153,20 @@ export function makeRaceCar(build: Build, tune: Tune, result: SimResult = simula
     idealLaunchRpm: 3500,
     launchWindow: [3000, 4000],
     peakPowerHp: result.peakPowerHp,
+    // Flywheel + clutch assembly, plus lighter reciprocating parts on forged internals.
+    engineInertia: ENGINE_INERTIA + (box.integratedClutch ? 0 : (clutch.weightKg - 9) * 0.012) + Math.min(0, internals.massDeltaKg ?? 0) * 0.006,
+    // Two driven wheels: rim weight sits near the rim radius (~0.2 m).
+    wheelInertia: WHEEL_INERTIA + 2 * rimDelta * 0.2 * 0.2 * 0.8,
+    clutchEngageS: box.integratedClutch ? INTEGRATED_BITE_S : clutch.engageS,
+    launchControlRpm: 0,
+    flatShift: ecu.flatShift && (box.transmission === "manual" || box.transmission === "sequential"),
   };
   car.shiftRpm = optimalShiftRpm(car);
   const w = findLaunchWindow(car);
   car.idealLaunchRpm = w.ideal;
   car.launchWindow = [w.lo, w.hi];
+  // Two-step: boxes with their own launch control already hold rpm; a manual clutch gets the ECU's.
+  if (ecu.launchControl && !box.integratedClutch) car.launchControlRpm = w.ideal;
   return car;
 }
 
@@ -191,7 +221,7 @@ export function shiftDown(car: RaceCar, s: CarState): ShiftQuality {
 }
 
 function getShiftTime(car: RaceCar): number {
-  return car.spec.shiftTimeS;
+  return car.spec.shiftTimeS * (car.flatShift ? 1 - FLAT_SHIFT_SAVING : 1);
 }
 
 /** Advance one car by dt with a throttle position (0..1). Mutates the state. */
@@ -216,7 +246,12 @@ export function stepCar(car: RaceCar, s: CarState, throttle: number, distanceM: 
     // Staged: the engine revs freely; launch control / converter stall caps it on boxes with built-in clutches.
     let tq = engineTorque(car, s.rpm, th, cut);
     if (car.launchHoldRpm > 0 && s.rpm >= car.launchHoldRpm * Math.max(0.35, th)) tq = Math.min(tq, -20);
-    we += (tq / ENGINE_INERTIA) * dt;
+    // Two-step launch limiter: cuts sparks to hold the launch rpm (with the classic pops).
+    if (car.launchControlRpm > 0 && th > 0 && s.rpm >= car.launchControlRpm) {
+      tq = Math.min(tq, -20);
+      s.pop = Math.max(s.pop, 0.45);
+    }
+    we += (tq / car.engineInertia) * dt;
     we = Math.max(we, IDLE_RPM * RPM_TO_RAD * (th > 0 ? 1 : 0.98));
     if (we < IDLE_RPM * RPM_TO_RAD) we += (IDLE_RPM * RPM_TO_RAD - we) * Math.min(1, dt * 8);
     s.rpm = we / RPM_TO_RAD;
@@ -230,7 +265,7 @@ export function stepCar(car: RaceCar, s: CarState, throttle: number, distanceM: 
   const mass = car.massKg;
   const load = roadLoadN(s.v, mass, spec);
   const grip = tractionLimitN(spec, Math.max(0, s.a), s.v);
-  const jw = WHEEL_INERTIA / (overall * overall);
+  const jw = car.wheelInertia / (overall * overall);
   const toForce = (engineSideTorque: number) => (engineSideTorque * overall * spec.efficiency) / r;
   const fromForce = (f: number) => (f * r) / (overall * spec.efficiency);
   let tEng = engineTorque(car, s.rpm, th, cut);
@@ -238,7 +273,7 @@ export function stepCar(car: RaceCar, s: CarState, throttle: number, distanceM: 
   const mult = spec.converter > 1 && car.launchHoldRpm > 0 ? 1 + (spec.converter - 1) * clamp(1 - ww / (car.launchHoldRpm * RPM_TO_RAD), 0, 1) : 1;
 
   // Clutch torque available: dumped clutch on a manual, modulated launch clutch on DCT / converter.
-  s.clutchBite = Math.min(1, s.clutchBite + dt / CLUTCH_BITE_S);
+  s.clutchBite = Math.min(1, s.clutchBite + dt / car.clutchEngageS);
   let shiftShare = 1;
   if (s.shiftLeft > 0) {
     s.shiftLeft -= dt;
@@ -269,7 +304,7 @@ export function stepCar(car: RaceCar, s: CarState, throttle: number, distanceM: 
   if (slipping) {
     // The driver (or launch control) slips the clutch to hold the engine at the launch speed it was revved to.
     const hold = Math.max(minLock, k, s.gear === 0 ? s.launchRpm * RPM_TO_RAD : 0);
-    tc = clamp(tEng + ((we - hold) * ENGINE_INERTIA) / 0.03, 0, capNm);
+    tc = clamp(tEng + ((we - hold) * car.engineInertia) / 0.03, 0, capNm);
   } else if (tEng > capNm) {
     slipping = true; // the engine out-torques the clutch: it slips under load
     tc = capNm;
@@ -287,10 +322,10 @@ export function stepCar(car: RaceCar, s: CarState, throttle: number, distanceM: 
     a = (ft - load) / (mass * 1.04);
     const reaction = fromForce(ft) / mult;
     if (slipping) {
-      we += ((tEng - tc / Math.max(shiftShare, 1e-6)) / ENGINE_INERTIA) * dt;
+      we += ((tEng - tc / Math.max(shiftShare, 1e-6)) / car.engineInertia) * dt;
       ww = Math.min(we, ww + ((tc - reaction) / jw) * dt);
     } else {
-      we += ((tEng * shiftShare - reaction) / (ENGINE_INERTIA + jw)) * dt;
+      we += ((tEng * shiftShare - reaction) / (car.engineInertia + jw)) * dt;
       ww = we;
     }
     s.v = Math.max(0, s.v + a * dt);
@@ -307,9 +342,9 @@ export function stepCar(car: RaceCar, s: CarState, throttle: number, distanceM: 
   } else {
     if (slipping) {
       a = (drive - load) / (mass * 1.04);
-      we += ((tEng - tc / Math.max(shiftShare, 1e-6)) / ENGINE_INERTIA) * dt;
+      we += ((tEng - tc / Math.max(shiftShare, 1e-6)) / car.engineInertia) * dt;
     } else {
-      const rot = (ENGINE_INERTIA * overall * overall) / (r * r);
+      const rot = (car.engineInertia * overall * overall) / (r * r);
       a = (drive - load) / (mass * 1.04 + rot);
     }
     s.v = Math.max(0, s.v + a * dt);
@@ -484,7 +519,56 @@ export const RIVALS: Rival[] = [
   { id: "nova", name: "Nova", car: "620 hp legend", tagline: "Sequential dog box. Perfect every time.", level: 6, paint: "#101113",
     build: { intake: "intake-hf", camshaft: "cam-race", turbo: "turbo-t45", intercooler: "ic-w2a", injectors: "inj-1300", fuel: "fuel-e85", ecu: "ecu-standalone", exhaust: "exh-header", internals: "int-race", cooling: "cool-race", differential: "diff-clutch", gearbox: "gbx-seq6", clutch: "clutch-twin", drivetrain: "dt-awd", body: "body-wide", aero: "aero-lip", wing: "wing-lip" }, tune: { boostTarget: 1.85, lambdaTarget: 0.76, timingOffset: 6, revLimit: 8200, finalDrive: 4.3 },
     skill: { reactionS: 0.15, launchFactor: 1, shiftFactor: 1 } },
+  // Free-run field: more drivers across every level, each with a rating from their quarter-mile pace.
+  { id: "gus", name: "Gus", car: "Bone-stock automatic", tagline: "Never misses a shift. Never hurries one either.", level: 1, paint: "#a7abb0",
+    build: { gearbox: "gbx-auto6" }, tune: {},
+    skill: { reactionS: 0.46, launchFactor: 0.6, shiftFactor: 0.8 } },
+  { id: "lena", name: "Lena", car: "Naturally aspirated screamer", tagline: "Race cams, high compression, 7,400 rpm.", level: 1, paint: "#d9541a",
+    build: { intake: "intake-hf", camshaft: "cam-race", exhaust: "exh-header", internals: "int-hicomp", ecu: "ecu-piggy", cooling: "cool-alu" }, tune: { revLimit: 7400, timingOffset: 2 },
+    skill: { reactionS: 0.3, launchFactor: 0.92, shiftFactor: 0.97 } },
+  { id: "tomas", name: "Tomas", car: "Front-drive twin-scroll", tagline: "Helical diff, decent hands, spins second gear.", level: 2, paint: "#195a62",
+    build: { turbo: "turbo-t30", intercooler: "ic-small", injectors: "inj-440", ecu: "ecu-piggy", drivetrain: "dt-fwd", differential: "diff-helical", exhaust: "exh-catback" }, tune: { boostTarget: 0.8, lambdaTarget: 0.8 },
+    skill: { reactionS: 0.32, launchFactor: 0.88, shiftFactor: 0.93 } },
+  { id: "ivy", name: "Ivy", car: "Automatic sleeper", tagline: "Looks stock. Converter launch, big boost.", level: 2, paint: "#16264a",
+    build: { intake: "intake-cai", turbo: "turbo-t30", intercooler: "ic-large", injectors: "inj-750", fuel: "fuel-98", ecu: "ecu-piggy", exhaust: "exh-3in", gearbox: "gbx-auto6" }, tune: { boostTarget: 1.0, lambdaTarget: 0.8 },
+    skill: { reactionS: 0.3, launchFactor: 1, shiftFactor: 0.95 } },
+  { id: "jax", name: "Jax", car: "Drift missile", tagline: "Locked diff, big wing, all smoke off the line.", level: 3, paint: "#a8121a",
+    build: { intake: "intake-hf", turbo: "turbo-t35", intercooler: "ic-small", injectors: "inj-750", ecu: "ecu-standalone", exhaust: "exh-3in", internals: "int-forged", differential: "diff-clutch", clutch: "clutch-twin", gearbox: "gbx-6cr", body: "body-overfender", wing: "wing-gt" }, tune: { boostTarget: 0.95, lambdaTarget: 0.8, timingOffset: 2 },
+    skill: { reactionS: 0.3, launchFactor: 1.25, shiftFactor: 0.94 } },
+  { id: "sora", name: "Sora", car: "Dual-clutch time-attack", tagline: "Race fuel, full aero, lightning shifts. Built for corners, not the strip.", level: 4, paint: "#e6c229",
+    build: { intake: "intake-hf", camshaft: "cam-vvt", turbo: "turbo-t35", intercooler: "ic-large", injectors: "inj-1000", fuel: "fuel-race", ecu: "ecu-standalone", exhaust: "exh-header", internals: "int-forged", cooling: "cool-alu", differential: "diff-clutch", gearbox: "gbx-dct7", body: "body-wide", aero: "aero-gt", wing: "wing-gt" }, tune: { boostTarget: 1.3, lambdaTarget: 0.79, timingOffset: 3, revLimit: 7600 },
+    skill: { reactionS: 0.26, launchFactor: 1, shiftFactor: 0.97 } },
+  { id: "brick", name: "Brick", car: "Heavy widebody automatic", tagline: "E85 and a converter. Slow to react, brutal on top.", level: 4, paint: "#2f7a3e",
+    build: { intake: "intake-hf", turbo: "turbo-t45", intercooler: "ic-large", injectors: "inj-1300", fuel: "fuel-e85", ecu: "ecu-standalone", exhaust: "exh-3in", internals: "int-forged", cooling: "cool-race", differential: "diff-clutch", gearbox: "gbx-auto6", body: "body-wide", wing: "wing-swan" }, tune: { boostTarget: 1.4, lambdaTarget: 0.78, timingOffset: 3, revLimit: 7400 },
+    skill: { reactionS: 0.36, launchFactor: 1, shiftFactor: 0.97 } },
+  { id: "zed", name: "Zed", car: "AWD sequential", tagline: "Dog box, all-wheel drive, quick on the tree.", level: 5, paint: "#4b5056",
+    build: { intake: "intake-hf", camshaft: "cam-race", turbo: "turbo-t45", intercooler: "ic-w2a", injectors: "inj-1300", fuel: "fuel-e85", ecu: "ecu-standalone", exhaust: "exh-header", internals: "int-race", cooling: "cool-race", differential: "diff-clutch", gearbox: "gbx-seq6", clutch: "clutch-twin", drivetrain: "dt-awd", body: "body-wide", aero: "aero-lip", wing: "wing-lip" }, tune: { boostTarget: 1.5, lambdaTarget: 0.77, timingOffset: 5, revLimit: 8000, finalDrive: 4.1 },
+    skill: { reactionS: 0.2, launchFactor: 1, shiftFactor: 0.99 } },
+  { id: "phantom", name: "Phantom", car: "Sequential AWD monster", tagline: "Nova's spec with a near-perfect light. The final ghost.", level: 7, paint: "#0d1320",
+    build: { intake: "intake-hf", camshaft: "cam-race", turbo: "turbo-t45", intercooler: "ic-w2a", injectors: "inj-1300", fuel: "fuel-e85", ecu: "ecu-standalone", exhaust: "exh-header", internals: "int-race", cooling: "cool-race", differential: "diff-clutch", gearbox: "gbx-seq6", clutch: "clutch-twin", drivetrain: "dt-awd", body: "body-wide", aero: "aero-lip", wing: "wing-lip" }, tune: { boostTarget: 1.85, lambdaTarget: 0.76, timingOffset: 6, revLimit: 8200, finalDrive: 4.3 },
+    skill: { reactionS: 0.1, launchFactor: 1, shiftFactor: 1 } },
 ];
+
+/** Rating 1-99 from the rival's own quarter-mile time (18 s = 1, 10 s = 99). Cached: rivals never change. */
+const ratingCache = new Map<string, number>();
+export function rivalRating(rivalId: string): number {
+  const hit = ratingCache.get(rivalId);
+  if (hit !== undefined) return hit;
+  const t = rivalGhost(rivalId, "quarter").totalS ?? 30;
+  const rating = Math.round(Math.min(99, Math.max(1, 1 + ((18 - t) / 8) * 98)));
+  ratingCache.set(rivalId, rating);
+  return rating;
+}
+
+/** Label for a rating band. */
+export function ratingTier(rating: number): string {
+  if (rating < 20) return "Rookie";
+  if (rating < 40) return "Street";
+  if (rating < 55) return "Club";
+  if (rating < 70) return "Pro";
+  if (rating < 85) return "Elite";
+  return "Legend";
+}
 
 export function rivalBuild(r: Rival): { build: Build; tune: Tune } {
   const build = { ...STOCK_BUILD, ...r.build };

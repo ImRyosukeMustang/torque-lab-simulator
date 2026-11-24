@@ -17,6 +17,8 @@ interface PartBase {
   price: number;
   /** Challenge id that must be completed (any grade) before the part can be bought. */
   unlockAfter?: string;
+  /** Weight added (+) or saved (−) versus the factory part (kg). Drivetrain and bodywork carry their own weights. */
+  massDeltaKg?: number;
 }
 
 export interface IntakePart extends PartBase {
@@ -118,6 +120,10 @@ export interface EcuPart extends PartBase {
   /** Lambda target range at wide-open throttle (1.00 = stoichiometric). */
   lambdaRange: [number, number];
   revLimitRange: [number, number];
+  /** Two-step rev limiter: holds the engine at the ideal launch speed while staged. */
+  launchControl: boolean;
+  /** No-lift shifting: an ignition cut instead of lifting shortens manual and sequential shifts. */
+  flatShift: boolean;
 }
 
 export interface GearboxPart extends PartBase {
@@ -151,6 +157,8 @@ export interface ClutchPart extends PartBase {
   /** Engine speed held while slipping the clutch at launch. */
   launchRpm: number;
   weightKg: number;
+  /** Time for the clutch to bite fully when it is dropped (s): aggressive friction material grabs sooner. */
+  engageS: number;
 }
 
 export interface DifferentialPart extends PartBase {

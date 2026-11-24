@@ -91,7 +91,9 @@ export function drivetrainSpec(build: Build, tune: Tune): DrivetrainSpec {
   const diff = getPart("differential", build.differential);
   const dt = getPart("drivetrain", build.drivetrain);
   const body = bodyworkSpec(build);
-  const massKg = VEHICLE.baseMassKg + box.weightKg + diff.weightKg + dt.weightKg + (box.integratedClutch ? 0 : clutch.weightKg) + body.massKg;
+  // Engine-bay parts add or save weight versus the factory parts (turbo kit, intercooler piping, lighter exhaust...).
+  const partMass = (Object.keys(build) as (keyof Build)[]).reduce((sum, slot) => sum + (getPart(slot, build[slot]).massDeltaKg ?? 0), 0);
+  const massKg = VEHICLE.baseMassKg + partMass + box.weightKg + diff.weightKg + dt.weightKg + (box.integratedClutch ? 0 : clutch.weightKg) + body.massKg;
   return {
     ratios: tune.gearRatios,
     finalDrive: tune.finalDrive,

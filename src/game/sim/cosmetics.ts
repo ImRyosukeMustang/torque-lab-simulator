@@ -1,4 +1,4 @@
-// Visual customisation choices. Pure data: no effect on the engine simulation.
+// Visual customisation choices. Pure data: no effect on the engine simulation (wheel weight only matters on the drag strip).
 export type PaintFinish = "gloss" | "metallic" | "pearl" | "satin" | "matte";
 export type RimStyle = "five" | "mesh" | "dish" | "turbine";
 export type StripeStyle = "none" | "twin" | "center" | "side";
@@ -66,6 +66,11 @@ export const FINISH_LABEL: Record<PaintFinish, string> = {
   satin: "Satin",
   matte: "Matte",
 };
+
+/** Weight of one wheel by style (kg). Wheels are unsprung, rotating mass, so lighter ones launch harder in a race. */
+export const RIM_MASS_KG: Record<RimStyle, number> = { five: 9.5, mesh: 7.8, dish: 11.6, turbine: 10.3 };
+/** Short note shown next to each wheel style. */
+export const RIM_NOTE: Record<RimStyle, string> = { five: "cast, 9.5 kg", mesh: "forged, 7.8 kg", dish: "deep cast, 11.6 kg", turbine: "flow-formed, 10.3 kg" };
 
 export const RIM_LABEL: Record<RimStyle, string> = {
   five: "5-spoke",

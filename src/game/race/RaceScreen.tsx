@@ -19,6 +19,7 @@ import {
   RACE_EVENTS,
   RIVALS,
   rivalGhost,
+  rivalRating,
   shiftDown,
   shiftUp,
   stepCar,
@@ -101,7 +102,7 @@ export function RaceScreen({ cfg }: { cfg: RaceConfig }) {
     const store = useGame.getState();
     const { game, settings } = store;
     const sim = simulate(game.build, game.tune);
-    const car = makeRaceCar(game.build, game.tune, sim);
+    const car = makeRaceCar(game.build, game.tune, sim, { rimStyle: game.cosmetics.rimStyle });
     carInfo.current = { revLimit: car.revLimit, shiftRpm: car.shiftRpm, launchWindow: car.launchWindow };
     const ghost = rivalGhost(cfg.rivalId, cfg.distance);
     const dist = RACE_DISTANCE_M[cfg.distance];
@@ -113,6 +114,8 @@ export function RaceScreen({ cfg }: { cfg: RaceConfig }) {
     const look = game.cosmetics;
     const kit = kitOf(game.build);
     const rivalKit = kitOf({ ...game.build, ...rival.build } as Record<string, string>);
+    const rivalTag = `${rival.name.toUpperCase()} · ${rivalRating(rival.id)}`;
+    const GLOSS = { matte: 0, satin: 0.3, gloss: 0.6, metallic: 0.8, pearl: 1 } as const;
     let wheel = 0;
     let rivalWheel = 0;
     let thr = 0;
@@ -259,8 +262,8 @@ export function RaceScreen({ cfg }: { cfg: RaceConfig }) {
         dt,
         distance: dist,
         units: useGame.getState().settings.units,
-        player: { x: s.x, kmh: s.v * 3.6, accel: s.a, spin: s.spin, pop: s.pop, wheelAngle: wheel, paint: look.paint, rim: look.rimColor, tint: look.tint, kit, ghost: false },
-        rival: { x: g.x, kmh: g.kmh, accel: 0, spin: g.spin, pop: g.pop, wheelAngle: rivalWheel, paint: rival.paint, rim: "#9ea3a8", tint: 0.6, kit: rivalKit, ghost: true },
+        player: { x: s.x, kmh: s.v * 3.6, accel: s.a, spin: s.spin, pop: s.pop, wheelAngle: wheel, paint: look.paint, rim: look.rimColor, tint: look.tint, kit, ghost: false, rimStyle: look.rimStyle, caliper: look.caliper, stripe: look.stripe, stripeColor: look.stripeColor, gloss: GLOSS[look.finish] },
+        rival: { x: g.x, kmh: g.kmh, accel: 0, spin: g.spin, pop: g.pop, wheelAngle: rivalWheel, paint: rival.paint, rim: "#9ea3a8", tint: 0.6, kit: rivalKit, ghost: true, label: rivalTag },
       });
       // Sound
       if (!ended) {
@@ -376,7 +379,7 @@ export function RaceScreen({ cfg }: { cfg: RaceConfig }) {
             <div className="flex justify-between text-[10px] uppercase tracking-widest">
               <span className="text-primary">You</span>
               <span className="text-ghost">
-                {rival.name} · {rival.car}
+                {rival.name} · {rival.car} · rating {rivalRating(rival.id)}
               </span>
             </div>
           </div>
