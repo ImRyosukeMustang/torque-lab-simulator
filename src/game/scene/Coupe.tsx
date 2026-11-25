@@ -427,6 +427,32 @@ function SideFlash({ color }: { color: string }) {
   );
 }
 
+function FenderFlares({ style, paint }: { style: "stock" | "overfender" | "widebody"; paint: THREE.MeshPhysicalMaterial }) {
+  const geometries = useMemo(() => {
+    if (style === "stock") return [];
+    const radius = style === "widebody" ? 0.47 : 0.43;
+    const depth = style === "widebody" ? 0.042 : 0.026;
+    return [WHEEL.frontX, WHEEL.rearX].flatMap((x) =>
+      [-1, 1].map((side) => {
+        const points = Array.from({ length: 25 }, (_, i) => {
+          const angle = (i / 24) * Math.PI;
+          return new THREE.Vector3(x + Math.cos(angle) * radius, 0.33 + Math.sin(angle) * radius, side * (style === "widebody" ? 0.94 : 0.91));
+        });
+        return new THREE.TubeGeometry(new THREE.CatmullRomCurve3(points), 48, depth, 8, false);
+      }),
+    );
+  }, [style]);
+  useEffect(() => () => geometries.forEach((geometry) => geometry.dispose()), [geometries]);
+
+  return (
+    <group>
+      {geometries.map((geometry, index) => (
+        <mesh key={index} geometry={geometry} material={paint} castShadow receiveShadow />
+      ))}
+    </group>
+  );
+}
+
 function BodyDetails() {
   const plateRear = useMemo(() => plateTexture("AM 20 X"), []);
   const plateFront = useMemo(() => plateTexture("AUTOMECH"), []);
@@ -494,6 +520,10 @@ function HoodVents() {
 
 export function Coupe({ children }: { children?: React.ReactNode }) {
   const look = useGame((s) => s.game.cosmetics);
+  const build = useGame((s) => s.game.build);
+  const aero = getPart("aero", build.aero).style;
+  const wing = getPart("wing", build.wing).style;
+  const body = getPart("body", build.body).style;
   const geo = useMemo(
     () => ({
       rear: extrude(rearBodyShape(), 1.74, 0.05),
@@ -609,8 +639,8 @@ export function Coupe({ children }: { children?: React.ReactNode }) {
             <primitive object={paint} attach="material" />
           </mesh>
           {/* side skirt */}
-          <mesh position={[0, 0.21, s * 0.9]}>
-            <boxGeometry args={[1.85, 0.06, 0.06]} />
+          <mesh position={[0, aero === "gt" ? 0.18 : 0.21, s * 0.9]}>
+            <boxGeometry args={[aero === "gt" ? 2.05 : aero === "lip" ? 1.95 : 1.85, aero === "gt" ? 0.1 : aero === "lip" ? 0.075 : 0.06, aero === "gt" ? 0.09 : aero === "lip" ? 0.075 : 0.06]} />
             <meshStandardMaterial color={C.trim} roughness={0.6} />
           </mesh>
           {/* B pillar */}
@@ -624,19 +654,62 @@ export function Coupe({ children }: { children?: React.ReactNode }) {
         <boxGeometry args={[0.04, 0.05, 1.55]} />
         <meshStandardMaterial color="#5a0d0a" emissive="#c21a10" emissiveIntensity={2.2} roughness={0.2} />
       </mesh>
-      {/* ducktail spoiler */}
-      <mesh position={[-2.02, 1.03, 0]} rotation-z={0.18} castShadow>
-        <boxGeometry args={[0.3, 0.025, 1.6]} />
-        <primitive object={paint} attach="material" />
-      </mesh>
+      {wing === "ducktail" && (
+        <mesh position={[-2.02, 1.03, 0]} rotation-z={0.18} castShadow>
+          <boxGeometry args={[0.3, 0.025, 1.6]} />
+          <primitive object={paint} attach="material" />
+        </mesh>
+      )}
+      {wing === "lip" && (
+        <mesh position={[-2.03, 1.015, 0]} rotation-z={0.12} castShadow>
+          <boxGeometry args={[0.2, 0.035, 1.3]} />
+          <meshStandardMaterial color="#202226" metalness={0.35} roughness={0.42} />
+        </mesh>
+      )}
+      {(wing === "gt" || wing === "swan") && (
+        <group>
+          {[-1, 1].map((side) => (
+            <mesh key={side} position={[-1.94, 1.12, side * 0.57]} rotation-z={wing === "swan" ? 0.12 : 0} castShadow>
+              <boxGeometry args={[0.045, 0.24, 0.04]} />
+              <meshStandardMaterial color="#282a2d" metalness={0.55} roughness={0.38} />
+            </mesh>
+          ))}
+          <mesh position={[-1.94, 1.25, 0]} rotation-z={wing === "swan" ? -0.035 : 0} castShadow>
+            <boxGeometry args={[0.38, 0.055, 1.62]} />
+            <meshStandardMaterial color="#202226" metalness={0.4} roughness={0.42} />
+          </mesh>
+          {wing === "gt" && (
+            <mesh position={[-1.94, 1.285, 0]} castShadow>
+              <boxGeometry args={[0.22, 0.025, 1.48]} />
+              <meshStandardMaterial color="#33363a" metalness={0.35} roughness={0.4} />
+            </mesh>
+          )}
+        </group>
+      )}
+      {aero !== "stock" && (
+        <group>
+          <mesh position={[2.22, 0.2, 0]} castShadow>
+            <boxGeometry args={[aero === "gt" ? 0.44 : 0.28, 0.045, aero === "gt" ? 1.55 : 1.34]} />
+            <meshStandardMaterial color={C.trim} metalness={0.2} roughness={0.68} />
+          </mesh>
+          {aero === "gt" &&
+            [-0.55, 0.55].map((z) => (
+              <mesh key={z} position={[2.08, 0.33, z]} rotation-z={-0.18} castShadow>
+                <boxGeometry args={[0.22, 0.06, 0.035]} />
+                <meshStandardMaterial color="#242629" roughness={0.6} />
+              </mesh>
+            ))}
+        </group>
+      )}
+      <FenderFlares style={body} paint={paint} />
       {/* diffuser */}
       <mesh position={[-2.05, 0.24, 0]}>
-        <boxGeometry args={[0.3, 0.05, 1.3]} />
+        <boxGeometry args={aero === "gt" ? [0.42, 0.06, 1.5] : [0.3, 0.05, 1.3]} />
         <meshStandardMaterial color={C.trim} roughness={0.7} />
       </mesh>
-      {[-0.4, -0.15, 0.15, 0.4].map((z) => (
+      {(aero === "gt" ? [-0.55, -0.37, -0.18, 0, 0.18, 0.37, 0.55] : [-0.4, -0.15, 0.15, 0.4]).map((z) => (
         <mesh key={z} position={[-2.08, 0.27, z]}>
-          <boxGeometry args={[0.26, 0.08, 0.015]} />
+          <boxGeometry args={[aero === "gt" ? 0.36 : 0.26, 0.08, 0.015]} />
           <meshStandardMaterial color={C.trim} roughness={0.7} />
         </mesh>
       ))}
