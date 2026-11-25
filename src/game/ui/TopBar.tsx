@@ -23,6 +23,7 @@ import { buildCost } from "../sim/parts";
 import { TUTORIAL_LOCKED_TABS, useGame, type Quality, type Tab } from "../store";
 import type { Units } from "../units";
 import { AdButton } from "./AdButton";
+import { onPortal } from "../crazygames";
 import { fmtCredits } from "./format";
 
 /** Minimum gap between "free credits" ads, so the offer stays a treat rather than a grind. */
@@ -146,7 +147,7 @@ function FullscreenButton() {
     return () => document.removeEventListener("fullscreenchange", on);
   }, []);
   const supported = typeof document !== "undefined" && Boolean(document.documentElement.requestFullscreen);
-  if (!supported) return null;
+  if (!supported || onPortal()) return null;
   return (
     <Button
       variant="ghost"

@@ -19,6 +19,7 @@ export function AdButton({ onReward, children, disabled, ...props }: { onReward:
   const timer = useRef(0);
   useEffect(() => () => window.clearInterval(timer.current), []);
 
+  if (!adsAvailable()) return null;
   const run = async () => {
     if (busy) return;
     setBusy(true);
