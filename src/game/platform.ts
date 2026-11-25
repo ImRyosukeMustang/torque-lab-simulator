@@ -29,6 +29,33 @@ export interface GamePlatform {
   subscribe: (listener: Listener) => () => void;
 }
 
+export interface ActiveClock {
+  now: () => number;
+  dispose: () => void;
+}
+
+/** Monotonic gameplay time that stops advancing during platform interruptions. */
+export function createActiveClock(
+  platform: Pick<GamePlatform, "subscribe">,
+  readNow: () => number = () => performance.now(),
+): ActiveClock {
+  let elapsed = 0;
+  let startedAt = typeof document !== "undefined" && document.hidden ? null : readNow();
+  const unsubscribe = platform.subscribe((event) => {
+    const now = readNow();
+    if (event === "pause" && startedAt !== null) {
+      elapsed += Math.max(0, now - startedAt);
+      startedAt = null;
+    } else if (event === "resume" && startedAt === null) {
+      startedAt = now;
+    }
+  });
+  return {
+    now: () => (startedAt === null ? elapsed : elapsed + Math.max(0, readNow() - startedAt)),
+    dispose: unsubscribe,
+  };
+}
+
 interface PokiSdk {
   init: () => Promise<void>;
   gameLoadingFinished: () => void;

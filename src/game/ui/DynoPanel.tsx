@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { engineAudio } from "../audio";
 import { soundProfile } from "../soundProfile";
 import { dynoLive } from "../dynoLive";
+import { createActiveClock, getGamePlatform, type ActiveClock } from "../platform";
 import { configKey } from "../sim/economy";
 import { lastPoint, LIMITS, sampleCurve, simulate } from "../sim/engine";
 import { getPart } from "../sim/parts";
@@ -104,7 +105,7 @@ export function DynoPanel() {
   const [rpm, setRpm] = useState(0);
   const [live, setLive] = useState<{ result: SimResult; upTo: number } | null>(null);
   const raf = useRef(0);
-  const holdTimer = useRef(0);
+  const clock = useRef<ActiveClock | null>(null);
 
   const fresh = game.lastRunKey === configKey(game.build, game.tune) && lastResult;
   const shown: SimResult | null = live?.result ?? (fresh ? lastResult : null);
@@ -114,7 +115,8 @@ export function DynoPanel() {
   useEffect(
     () => () => {
       cancelAnimationFrame(raf.current);
-      window.clearTimeout(holdTimer.current);
+      clock.current?.dispose();
+      clock.current = null;
       dynoLive.running = false;
       dynoLive.pop = 0;
       engineAudio.kill();
@@ -124,39 +126,60 @@ export function DynoPanel() {
   );
 
   /** Let the rollers and the sound wind down after a pull (visual only). */
-  const coast = (fromRpm: number) => {
-    const t0 = performance.now();
+  const coast = (fromRpm: number, activeClock: ActiveClock) => {
+    const t0 = activeClock.now();
     const idle = 900;
     const step = (now: number) => {
-      const t = Math.min(1, (now - t0) / 1000 / COAST_SECONDS);
+      const t = Math.min(1, (activeClock.now() - t0) / 1000 / COAST_SECONDS);
       const e = 1 - (1 - t) * (1 - t);
       dynoLive.rpm = fromRpm + (idle - fromRpm) * e;
       dynoLive.load = 0.05;
       dynoLive.boostBar *= 0.9;
       dynoLive.egtC += (450 - dynoLive.egtC) * 0.03;
       if (t < 1) raf.current = requestAnimationFrame(step);
-      else dynoLive.running = false;
+      else {
+        dynoLive.running = false;
+        activeClock.dispose();
+        if (clock.current === activeClock) clock.current = null;
+      }
     };
     raf.current = requestAnimationFrame(step);
   };
 
   const start = () => {
     cancelAnimationFrame(raf.current);
-    window.clearTimeout(holdTimer.current);
+    clock.current?.dispose();
+    const activeClock = createActiveClock(getGamePlatform());
+    clock.current = activeClock;
     const result = simulate(game.build, game.tune);
     const end = lastPoint(result.curve).rpm;
     const exhaust = getPart("exhaust", game.build.exhaust);
     const hasTurbo = getPart("turbo", game.build.turbo).maximumFlow > 0;
     const { sound, volume } = useGame.getState().settings;
     if (sound) engineAudio.start({ volume, profile: soundProfile(game.build) });
-    const t0 = performance.now();
+    const t0 = activeClock.now();
     let lastUi = 0;
+    let holdStartedAt: number | null = null;
     setRunning(true);
     setDynoRunning(true);
     dynoLive.running = true;
     dynoLive.pop = 0;
     const tick = (now: number) => {
-      const t = Math.min(1, (now - t0) / 1000 / SWEEP_SECONDS);
+      if (holdStartedAt !== null) {
+        if (activeClock.now() - holdStartedAt >= LIMITER_HOLD_MS) {
+          dynoLive.pop = 0;
+          engineAudio.stop();
+          setRunning(false);
+          setDynoRunning(false);
+          setLive(null);
+          completeDynoRun();
+          coast(end, activeClock);
+        } else {
+          raf.current = requestAnimationFrame(tick);
+        }
+        return;
+      }
+      const t = Math.min(1, (activeClock.now() - t0) / 1000 / SWEEP_SECONDS);
       const r = RPM_FROM + (end - RPM_FROM) * t;
       const p = sampleCurve(result.curve, r);
       dynoLive.rpm = r;
@@ -172,19 +195,12 @@ export function DynoPanel() {
       if (t < 1) {
         raf.current = requestAnimationFrame(tick);
       } else {
-        // Bounce off the limiter, then lift and coast down.
+        // Bounce off the limiter, then hold before lifting and coasting down.
         const pops = exhaust.id !== "exh-stock";
         dynoLive.pop = pops ? 1 : 0.15;
         engineAudio.limiter(LIMITER_HOLD_MS / 1000);
-        holdTimer.current = window.setTimeout(() => {
-          dynoLive.pop = 0;
-          engineAudio.stop();
-          setRunning(false);
-          setDynoRunning(false);
-          setLive(null);
-          completeDynoRun();
-          coast(end);
-        }, LIMITER_HOLD_MS);
+        holdStartedAt = activeClock.now();
+        raf.current = requestAnimationFrame(tick);
       }
     };
     raf.current = requestAnimationFrame(tick);
@@ -193,7 +209,8 @@ export function DynoPanel() {
   const stop = () => {
     // Aborting never records a run, even during the limiter hold.
     cancelAnimationFrame(raf.current);
-    window.clearTimeout(holdTimer.current);
+    clock.current?.dispose();
+    clock.current = null;
     dynoLive.running = false;
     dynoLive.pop = 0;
     engineAudio.kill();

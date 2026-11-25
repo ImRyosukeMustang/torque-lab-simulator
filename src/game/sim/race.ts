@@ -268,7 +268,7 @@ export function stepCar(car: RaceCar, s: CarState, throttle: number, distanceM: 
   const jw = car.wheelInertia / (overall * overall);
   const toForce = (engineSideTorque: number) => (engineSideTorque * overall * spec.efficiency) / r;
   const fromForce = (f: number) => (f * r) / (overall * spec.efficiency);
-  let tEng = engineTorque(car, s.rpm, th, cut);
+  const tEng = engineTorque(car, s.rpm, th, cut);
   // Converter torque multiplication fades out as the turbine catches the impeller.
   const mult = spec.converter > 1 && car.launchHoldRpm > 0 ? 1 + (spec.converter - 1) * clamp(1 - ww / (car.launchHoldRpm * RPM_TO_RAD), 0, 1) : 1;
 

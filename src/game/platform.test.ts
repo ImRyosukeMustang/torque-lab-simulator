@@ -1,11 +1,36 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createBrowserPlatform, createPokiPlatform, createPlaygamaPlatform } from "./platform";
+import { createActiveClock, createBrowserPlatform, createPokiPlatform, createPlaygamaPlatform } from "./platform";
 
 afterEach(() => {
   vi.restoreAllMocks();
 });
 
 describe("platform adapters", () => {
+  it("keeps gameplay time frozen during interruptions", () => {
+    let now = 100;
+    let notify: ((event: "pause" | "resume") => void) | undefined;
+    const unsubscribe = vi.fn();
+    const platform = {
+      subscribe: vi.fn((listener: (event: "pause" | "resume") => void) => {
+        notify = listener;
+        return unsubscribe;
+      }),
+    };
+    const clock = createActiveClock(platform, () => now);
+
+    now = 150;
+    expect(clock.now()).toBe(50);
+    notify?.("pause");
+    now = 250;
+    expect(clock.now()).toBe(50);
+    notify?.("resume");
+    now = 280;
+    expect(clock.now()).toBe(80);
+
+    clock.dispose();
+    expect(unsubscribe).toHaveBeenCalledOnce();
+  });
+
   it("uses browser storage and never awards an offline rewarded ad", async () => {
     const platform = createBrowserPlatform();
     window.localStorage.clear();

@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { engineAudio } from "../audio";
-import { getGamePlatform } from "../platform";
+import { createActiveClock, getGamePlatform } from "../platform";
 import { raceSound } from "../raceSound";
 import { sampleCurve, simulate } from "../sim/engine";
 import { getPart } from "../sim/parts";
@@ -122,7 +122,9 @@ export function RaceScreen({ cfg }: { cfg: RaceConfig }) {
     let rivalWheel = 0;
     let thr = 0;
     let acc = 0;
-    let last = performance.now();
+    const platform = getGamePlatform();
+    const clock = createActiveClock(platform);
+    let last = clock.now();
     let lastHud = 0;
     let lastLimiter = false;
     let lastAmbers = 0;
@@ -183,8 +185,9 @@ export function RaceScreen({ cfg }: { cfg: RaceConfig }) {
     };
 
     const frame = (now: number) => {
-      const dt = Math.min(0.05, (now - last) / 1000);
-      last = now;
+      const clockNow = clock.now();
+      const dt = Math.min(0.05, (clockNow - last) / 1000);
+      last = clockNow;
       const inp = input.current;
       // Inputs
       while (inp.up > 0) {
@@ -289,6 +292,12 @@ export function RaceScreen({ cfg }: { cfg: RaceConfig }) {
       raf = requestAnimationFrame(frame);
     };
     raf = requestAnimationFrame(frame);
+    const unsubscribe = platform.subscribe((event) => {
+      if (event === "pause") {
+        input.current = { gas: false, up: 0, down: 0 };
+        setGasDown(false);
+      }
+    });
 
     const isTyping = (e: KeyboardEvent) => e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement;
     const down = (e: KeyboardEvent) => {
@@ -323,6 +332,8 @@ export function RaceScreen({ cfg }: { cfg: RaceConfig }) {
       window.removeEventListener("keydown", down);
       window.removeEventListener("keyup", up);
       window.removeEventListener("blur", blur);
+      unsubscribe();
+      clock.dispose();
       engineAudio.kill();
       raceSound.stopAll();
     };

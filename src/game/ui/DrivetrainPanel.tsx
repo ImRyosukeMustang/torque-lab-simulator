@@ -6,6 +6,7 @@ import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
 import { engineAudio } from "../audio";
 import { dynoLive } from "../dynoLive";
+import { createActiveClock, getGamePlatform, type ActiveClock } from "../platform";
 import { trLabel } from "../sim/challenges";
 import { tractiveForceCurves, VEHICLE } from "../sim/drivetrain";
 import { configKey } from "../sim/economy";
@@ -57,6 +58,7 @@ export function DrivetrainPanel() {
   const setDynoRunning = useGame((s) => s.setDynoRunning);
   const [live, setLive] = useState<{ sample: AccelSample; upTo: number } | null>(null);
   const raf = useRef(0);
+  const clock = useRef<ActiveClock | null>(null);
 
   const { build, tune } = game;
   const box = getPart("gearbox", build.gearbox);
@@ -70,6 +72,8 @@ export function DrivetrainPanel() {
   useEffect(
     () => () => {
       cancelAnimationFrame(raf.current);
+      clock.current?.dispose();
+      clock.current = null;
       dynoLive.running = false;
       engineAudio.kill();
       useGame.getState().setDynoRunning(false);
@@ -98,17 +102,20 @@ export function DrivetrainPanel() {
     const result = simulate(build, tune);
     const trace = result.vehicle.trace;
     if (trace.length === 0) return;
+    clock.current?.dispose();
+    const activeClock = createActiveClock(getGamePlatform());
+    clock.current = activeClock;
     const { sound, volume } = useGame.getState().settings;
     if (sound) engineAudio.start({ volume, profile: soundProfile(build) });
     setDynoRunning(true);
     dynoLive.running = true;
-    const t0 = performance.now();
+    const t0 = activeClock.now();
     let gear = 1;
     let idx = 0;
     let lastUi = 0;
     const end = trace[trace.length - 1]!.t;
     const tick = (now: number) => {
-      const t = Math.min(end, ((now - t0) / 1000) * PLAYBACK_SPEED);
+      const t = Math.min(end, ((activeClock.now() - t0) / 1000) * PLAYBACK_SPEED);
       while (idx < trace.length - 1 && trace[idx + 1]!.t <= t) idx++;
       const s = trace[idx]!;
       if (s.gear !== gear) {
@@ -130,6 +137,8 @@ export function DrivetrainPanel() {
         setDynoRunning(false);
         setLive(null);
         completeDynoRun();
+        activeClock.dispose();
+        if (clock.current === activeClock) clock.current = null;
       }
     };
     raf.current = requestAnimationFrame(tick);
@@ -137,6 +146,8 @@ export function DrivetrainPanel() {
 
   const abort = () => {
     cancelAnimationFrame(raf.current);
+    clock.current?.dispose();
+    clock.current = null;
     engineAudio.kill();
     dynoLive.running = false;
     setDynoRunning(false);
