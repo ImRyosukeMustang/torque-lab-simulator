@@ -149,9 +149,9 @@ export const PARTS: Part[] = [
   { id: "wing-swan", slot: "wing", name: "Swan-Neck Race Wing", description: "Top-mounted swan-neck uprights leave the wing's suction side clean: more downforce per unit of drag.", price: 2900, style: "swan", dragAreaDelta: 0.045, downforceArea: 0.62, downforceFront: 0, massKg: 6, gripBonus: 0, rollingDelta: 0, unlockAfter: "c4" },
 
   // Body width and tyres
-  { id: "body-stock", slot: "body", name: "OEM Body + 225 Tyres", description: "Factory steel arches on 225/45 R18 tyres.", price: 0, style: "stock", dragAreaDelta: 0, downforceArea: 0, downforceFront: 0.5, massKg: 0, gripBonus: 0, rollingDelta: 0, trackDelta: 0 },
-  { id: "body-overfender", slot: "body", name: "Bolt-On Overfenders + 255 Tyres", description: "Riveted fibreglass flares over 255/40 R18 semi-slicks. More grip off the line, a little more drag.", price: 2200, style: "overfender", dragAreaDelta: 0.03, downforceArea: 0, downforceFront: 0.5, massKg: 14, gripBonus: 0.06, rollingDelta: 0.0006, trackDelta: 0.035, unlockAfter: "c2" },
-  { id: "body-wide", slot: "body", name: "Full Wide-Body + 285 Tyres", description: "Moulded wide-body panels and 285/35 R18 tyres. Huge contact patch for launches, more frontal area and weight.", price: 4600, style: "widebody", dragAreaDelta: 0.05, downforceArea: 0.04, downforceFront: 0.3, massKg: 22, gripBonus: 0.11, rollingDelta: 0.0011, trackDelta: 0.06, unlockAfter: "c4" },
+  { id: "body-stock", slot: "body", name: "OEM Body + 225 Tyres", description: "Factory steel arches on 225/45 R18 tyres.", price: 0, style: "stock", dragAreaDelta: 0, downforceArea: 0, downforceFront: 0.5, massKg: 0, gripBonus: 0, rollingDelta: 0, tyreWidthMm: 225, trackDelta: 0 },
+  { id: "body-overfender", slot: "body", name: "Bolt-On Overfenders + 255 Tyres", description: "Riveted fibreglass flares over 255/40 R18 semi-slicks. More grip off the line, a little more drag.", price: 2200, style: "overfender", dragAreaDelta: 0.03, downforceArea: 0, downforceFront: 0.5, massKg: 14, gripBonus: 0.06, rollingDelta: 0.0006, tyreWidthMm: 255, trackDelta: 0.035, unlockAfter: "c2" },
+  { id: "body-wide", slot: "body", name: "Full Wide-Body + 285 Tyres", description: "Moulded wide-body panels and 285/35 R18 tyres. Huge contact patch for launches, more frontal area and weight.", price: 4600, style: "widebody", dragAreaDelta: 0.05, downforceArea: 0.04, downforceFront: 0.3, massKg: 22, gripBonus: 0.11, rollingDelta: 0.0011, tyreWidthMm: 285, trackDelta: 0.06, unlockAfter: "c4" },
 ] as Part[];
 
 

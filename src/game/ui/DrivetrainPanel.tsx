@@ -8,7 +8,7 @@ import { engineAudio } from "../audio";
 import { dynoLive } from "../dynoLive";
 import { createActiveClock, getGamePlatform, type ActiveClock } from "../platform";
 import { trLabel } from "../sim/challenges";
-import { tractiveForceCurves, VEHICLE } from "../sim/drivetrain";
+import { bodyworkSpec, tractiveForceCurves, VEHICLE } from "../sim/drivetrain";
 import { configKey } from "../sim/economy";
 import { simulate } from "../sim/engine";
 import { DRIVETRAIN_SLOTS, gearRatioLimits, getPart } from "../sim/parts";
@@ -61,6 +61,7 @@ export function DrivetrainPanel() {
   const clock = useRef<ActiveClock | null>(null);
 
   const { build, tune } = game;
+  const bodywork = bodyworkSpec(build);
   const box = getPart("gearbox", build.gearbox);
   const diff = getPart("differential", build.differential);
   const layout = getPart("drivetrain", build.drivetrain);
@@ -347,7 +348,7 @@ export function DrivetrainPanel() {
         </>
       )}
       <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-        <Timer className="h-3 w-3" /> Track test plays back {PLAYBACK_SPEED}× faster than real time. <Gauge className="ml-1 h-3 w-3" /> Tyres: μ {VEHICLE.tyreMu}, {VEHICLE.tyreRadiusM * 1000} mm radius.
+        <Timer className="h-3 w-3" /> Track test plays back {PLAYBACK_SPEED}× faster than real time. <Gauge className="ml-1 h-3 w-3" /> Tyres: {bodywork.tyreWidthMm} mm · μ {bodywork.tyreMu.toFixed(2)} · track +{Math.round(bodywork.trackDeltaM * 1000)} mm · {VEHICLE.tyreRadiusM * 1000} mm radius.
       </p>
     </div>
   );

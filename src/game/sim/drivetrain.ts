@@ -72,7 +72,8 @@ export interface DrivetrainSpec {
 
 /** Combined effect of the fitted aero kit, wing and body on drag, downforce, mass and tyres. */
 export function bodyworkSpec(build: Build) {
-  const parts = [getPart("aero", build.aero), getPart("wing", build.wing), getPart("body", build.body)];
+  const body = getPart("body", build.body);
+  const parts = [getPart("aero", build.aero), getPart("wing", build.wing), body];
   const downforceArea = parts.reduce((s, p) => s + p.downforceArea, 0);
   const frontDown = parts.reduce((s, p) => s + p.downforceArea * p.downforceFront, 0);
   return {
@@ -82,6 +83,8 @@ export function bodyworkSpec(build: Build) {
     massKg: parts.reduce((s, p) => s + p.massKg, 0),
     tyreMu: VEHICLE.tyreMu + parts.reduce((s, p) => s + p.gripBonus, 0),
     rollingCoeff: VEHICLE.rollingCoeff + parts.reduce((s, p) => s + p.rollingDelta, 0),
+    tyreWidthMm: body.tyreWidthMm,
+    trackDeltaM: body.trackDelta * 2,
   };
 }
 

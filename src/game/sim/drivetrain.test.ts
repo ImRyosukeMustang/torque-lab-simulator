@@ -1,8 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { aeroLoads } from "./drivetrain";
+import { aeroLoads, bodyworkSpec } from "./drivetrain";
 import { STOCK_BUILD } from "./parts";
 
 describe("aerodynamic loads", () => {
+  it("reports fitted tyre width, track and grip for the workshop setup", () => {
+    const stock = bodyworkSpec(STOCK_BUILD);
+    const wide = bodyworkSpec({ ...STOCK_BUILD, body: "body-wide" });
+
+    expect(stock.tyreWidthMm).toBe(225);
+    expect(wide.tyreWidthMm).toBe(285);
+    expect(wide.trackDeltaM).toBeCloseTo(0.12);
+    expect(wide.tyreMu).toBeGreaterThan(stock.tyreMu);
+  });
+
   it("scales drag with speed squared and gives the factory body no downforce", () => {
     const at100 = aeroLoads(STOCK_BUILD, 100);
     const at200 = aeroLoads(STOCK_BUILD, 200);

@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { dynoLive } from "../dynoLive";
 import type { Cosmetics, PaintFinish, RimStyle } from "../sim/cosmetics";
+import { bodyworkSpec } from "../sim/drivetrain";
 import { getPart } from "../sim/parts";
 import { useGame } from "../store";
 import { sculptBody } from "./bodySculpt";
@@ -107,10 +108,12 @@ function roofShape() {
   return s;
 }
 
-function tireGeometry() {
-  const pts = [
+function tireGeometry(width: number) {
+  const widthScale = width / 0.248;
+  const profile: [number, number][] = [
     [0.235, -0.12], [0.3, -0.124], [0.322, -0.112], [0.332, -0.085], [0.334, 0], [0.332, 0.085], [0.322, 0.112], [0.3, 0.124], [0.235, 0.12],
-  ].map(([r, y]) => new THREE.Vector2(r, y));
+  ];
+  const pts = profile.map(([r, y]) => new THREE.Vector2(r, y * widthScale));
   const g = new THREE.LatheGeometry(pts, 64);
   g.rotateX(Math.PI / 2);
   return g;
@@ -244,8 +247,8 @@ function Spokes({ style, side, mat }: { style: RimStyle; side: 1 | -1; mat: THRE
   );
 }
 
-function Wheel({ position, side, spinRef, look }: { position: [number, number, number]; side: 1 | -1; spinRef?: React.RefObject<THREE.Group | null> | undefined; look: Cosmetics }) {
-  const tire = useMemo(tireGeometry, []);
+function Wheel({ position, side, spinRef, look, tyreWidth }: { position: [number, number, number]; side: 1 | -1; spinRef?: React.RefObject<THREE.Group | null> | undefined; look: Cosmetics; tyreWidth: number }) {
+  const tire = useMemo(() => tireGeometry(tyreWidth), [tyreWidth]);
   const rimMat = useMemo(() => new THREE.MeshStandardMaterial({ metalness: 0.85, roughness: 0.28 }), []);
   useEffect(() => {
     rimMat.color.set(look.rimColor);
@@ -427,7 +430,7 @@ function SideFlash({ color }: { color: string }) {
   );
 }
 
-function FenderFlares({ style, paint }: { style: "stock" | "overfender" | "widebody"; paint: THREE.MeshPhysicalMaterial }) {
+function FenderFlares({ style, paint, trackDelta }: { style: "stock" | "overfender" | "widebody"; paint: THREE.MeshPhysicalMaterial; trackDelta: number }) {
   const geometries = useMemo(() => {
     if (style === "stock") return [];
     const radius = style === "widebody" ? 0.47 : 0.43;
@@ -436,12 +439,13 @@ function FenderFlares({ style, paint }: { style: "stock" | "overfender" | "wideb
       [-1, 1].map((side) => {
         const points = Array.from({ length: 25 }, (_, i) => {
           const angle = (i / 24) * Math.PI;
-          return new THREE.Vector3(x + Math.cos(angle) * radius, 0.33 + Math.sin(angle) * radius, side * (style === "widebody" ? 0.94 : 0.91));
+          const flareOffset = style === "widebody" ? 0.02 : 0.015;
+          return new THREE.Vector3(x + Math.cos(angle) * radius, 0.33 + Math.sin(angle) * radius, side * (0.88 + trackDelta + flareOffset));
         });
         return new THREE.TubeGeometry(new THREE.CatmullRomCurve3(points), 48, depth, 8, false);
       }),
     );
-  }, [style]);
+  }, [style, trackDelta]);
   useEffect(() => () => geometries.forEach((geometry) => geometry.dispose()), [geometries]);
 
   return (
@@ -523,7 +527,11 @@ export function Coupe({ children }: { children?: React.ReactNode }) {
   const build = useGame((s) => s.game.build);
   const aero = getPart("aero", build.aero).style;
   const wing = getPart("wing", build.wing).style;
-  const body = getPart("body", build.body).style;
+  const bodyPart = getPart("body", build.body);
+  const body = bodyPart.style;
+  const bodywork = bodyworkSpec(build);
+  const wheelTrack = WHEEL.z + bodywork.trackDeltaM / 2;
+  const tyreWidth = bodywork.tyreWidthMm / 1000;
   const geo = useMemo(
     () => ({
       rear: extrude(rearBodyShape(), 1.74, 0.05),
@@ -701,7 +709,7 @@ export function Coupe({ children }: { children?: React.ReactNode }) {
             ))}
         </group>
       )}
-      <FenderFlares style={body} paint={paint} />
+      <FenderFlares style={body} paint={paint} trackDelta={bodywork.trackDeltaM / 2} />
       {/* diffuser */}
       <mesh position={[-2.05, 0.24, 0]}>
         <boxGeometry args={aero === "gt" ? [0.42, 0.06, 1.5] : [0.3, 0.05, 1.3]} />
@@ -714,10 +722,10 @@ export function Coupe({ children }: { children?: React.ReactNode }) {
         </mesh>
       ))}
       <ExhaustTips />
-      <Wheel position={[WHEEL.frontX, WHEEL.radius, WHEEL.z]} side={1} look={look} />
-      <Wheel position={[WHEEL.frontX, WHEEL.radius, -WHEEL.z]} side={-1} look={look} />
-      <Wheel position={[WHEEL.rearX, WHEEL.radius, WHEEL.z]} side={1} spinRef={rearL} look={look} />
-      <Wheel position={[WHEEL.rearX, WHEEL.radius, -WHEEL.z]} side={-1} spinRef={rearR} look={look} />
+      <Wheel position={[WHEEL.frontX, WHEEL.radius, wheelTrack]} side={1} look={look} tyreWidth={tyreWidth} />
+      <Wheel position={[WHEEL.frontX, WHEEL.radius, -wheelTrack]} side={-1} look={look} tyreWidth={tyreWidth} />
+      <Wheel position={[WHEEL.rearX, WHEEL.radius, wheelTrack]} side={1} spinRef={rearL} look={look} tyreWidth={tyreWidth} />
+      <Wheel position={[WHEEL.rearX, WHEEL.radius, -wheelTrack]} side={-1} spinRef={rearR} look={look} tyreWidth={tyreWidth} />
       {children}
     </group>
   );
