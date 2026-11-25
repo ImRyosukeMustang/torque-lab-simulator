@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { engineAudio } from "../audio";
-import { gameplayStart, gameplayStop, happytime } from "../crazygames";
+import { getGamePlatform } from "../platform";
 import { raceSound } from "../raceSound";
 import { sampleCurve, simulate } from "../sim/engine";
 import { getPart } from "../sim/parts";
@@ -137,8 +137,6 @@ export function RaceScreen({ cfg }: { cfg: RaceConfig }) {
     setResult(null);
     setDoubled(false);
     if (settings.sound) engineAudio.start({ volume: settings.volume, profile: soundProfile(game.build) });
-    gameplayStart();
-
     const say = (text: string, tone: "good" | "bad" | "info", forS = 1.1) => {
       msg = { text, tone, key: performance.now() };
       msgUntil = s.t + forS;
@@ -159,14 +157,13 @@ export function RaceScreen({ cfg }: { cfg: RaceConfig }) {
       ended = true;
       engineAudio.stop();
       raceSound.screech(0);
-      gameplayStop();
       const playerTotal = foul || dnf ? null : s.finishT;
       const rivalTotal = ghost.totalS;
       const won = !foul && !dnf && playerTotal !== null && (rivalTotal === null || playerTotal < rivalTotal);
       const out = useGame.getState().finishRace(cfg, { won, totalS: playerTotal, foul });
       if (won) {
         raceSound.win();
-        happytime();
+        getGamePlatform().happytime();
       } else raceSound.lose();
       setResult({
         won,
@@ -328,7 +325,6 @@ export function RaceScreen({ cfg }: { cfg: RaceConfig }) {
       window.removeEventListener("blur", blur);
       engineAudio.kill();
       raceSound.stopAll();
-      gameplayStop();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [runKey, cfg.eventId, cfg.rivalId, cfg.distance]);

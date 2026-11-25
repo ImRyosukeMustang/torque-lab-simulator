@@ -21,9 +21,9 @@ import { engineAudio } from "../audio";
 import { AD_REWARD, configKey } from "../sim/economy";
 import { buildCost } from "../sim/parts";
 import { TUTORIAL_LOCKED_TABS, useGame, type Quality, type Tab } from "../store";
+import { getGamePlatform } from "../platform";
 import type { Units } from "../units";
 import { AdButton } from "./AdButton";
-import { onPortal } from "../crazygames";
 import { fmtCredits } from "./format";
 
 /** Minimum gap between "free credits" ads, so the offer stays a treat rather than a grind. */
@@ -147,7 +147,7 @@ function FullscreenButton() {
     return () => document.removeEventListener("fullscreenchange", on);
   }, []);
   const supported = typeof document !== "undefined" && Boolean(document.documentElement.requestFullscreen);
-  if (!supported || onPortal()) return null;
+  if (!supported || getGamePlatform().id !== "browser") return null;
   return (
     <Button
       variant="ghost"

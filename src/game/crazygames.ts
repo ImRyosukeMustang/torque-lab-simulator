@@ -1,7 +1,5 @@
 // CrazyGames SDK v3 wrapper. Loads lazily in the browser; every call is a no-op outside the portal,
 // so the game runs the same on any host. Docs: https://docs.crazygames.com/sdk/
-import { setMasterMuted } from "./audioCore";
-
 type Env = "crazygames" | "local" | "disabled" | "unavailable";
 interface CgSdk {
   init: () => Promise<void>;
@@ -103,12 +101,11 @@ export function showRewardedAd(): Promise<"ok" | "error" | "unavailable"> {
     const wasPlaying = playing;
     gameplayStop();
     const end = (r: "ok" | "error") => {
-      setMasterMuted(false);
       if (wasPlaying) gameplayStart();
       resolve(r);
     };
     try {
-      s.ad.requestAd("rewarded", { adStarted: () => setMasterMuted(true), adFinished: () => end("ok"), adError: () => end("error") });
+      s.ad.requestAd("rewarded", { adFinished: () => end("ok"), adError: () => end("error") });
     } catch {
       end("error");
     }

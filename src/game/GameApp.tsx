@@ -2,9 +2,10 @@ import { Play } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Toaster } from "@/components/ui/sonner";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { getAudioContext } from "./audioCore";
-import { initCrazyGames, loadingStop } from "./crazygames";
+import { getGamePlatform } from "./platform";
 import { RaceScreen } from "./race/RaceScreen";
 import { GameCanvas } from "./scene/GameCanvas";
 import { installGlobalClickSound } from "./uiSound";
@@ -43,17 +44,43 @@ export function GameApp() {
   const race = useGame((s) => s.race);
   const [started, setStarted] = useState(false);
   useEffect(() => {
-    // Load the save after the portal SDK is ready, so its cloud save wins when present.
     let alive = true;
-    void initCrazyGames().then(() => {
+    const platform = getGamePlatform();
+    void (async () => {
+      await platform.initialize();
       if (!alive) return;
-      load();
-      loadingStop();
+      await load();
+      if (!alive) return;
+      await platform.ready();
+    })().catch((error: unknown) => {
+      if (!alive) return;
+      console.error("Game platform initialization failed:", error);
+      toast.error("Game could not start", {
+        description:
+          error instanceof Error ? error.message : "The platform integration failed to initialize.",
+      });
     });
     return () => {
       alive = false;
     };
   }, [load]);
+
+  useEffect(() => {
+    if (!loaded) return;
+    const platform = getGamePlatform();
+    if (started && !document.hidden) platform.gameplayStart();
+    const unsubscribe = platform.subscribe((event) => {
+      if (event === "pause") {
+        platform.gameplayStop();
+      } else {
+        if (started && !document.hidden) platform.gameplayStart();
+      }
+    });
+    return () => {
+      unsubscribe();
+      platform.gameplayStop();
+    };
+  }, [loaded, started]);
   useEffect(() => installGlobalClickSound(), []);
 
   const panel = tab === "workshop" ? <WorkshopPanel /> : tab === "dyno" ? <DynoPanel /> : tab === "drivetrain" ? <DrivetrainPanel /> : tab === "paint" ? <PaintPanel /> : tab === "race" ? <RacePanel /> : <CareerPanel />;

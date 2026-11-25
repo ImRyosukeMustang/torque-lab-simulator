@@ -1,15 +1,15 @@
 # AUTOMECH / Torque Lab roadmap
 
 ## Current request (Nov 2026)
-- [ ] Fix existing bugs: save validator (two-arg z.record), contract unlock order/consistency, unsolvable contracts + failing tests, default graphics tier
+- [x] Fix existing bugs: save validator (two-arg z.record), contract unlock order/consistency, unsolvable contracts + failing tests, default graphics tier
 - [ ] Every existing button works; sound effects on all actions
-- [ ] Drag strip: 2D side-view straight track, rival ghost behind a wall, Christmas tree, launch, manual shifting with tachometer, 1/4 · 1/2 · 1 mile
-- [ ] Rival ghosts at several difficulty levels; races in career mode with correct rewards
-- [ ] Street Rival onboarding (beat a 220 hp rival first, then unlock the full workshop)
-- [ ] Units setting: imperial (mph, lb-ft, °F, ft) or metric
-- [ ] Body kits: aero kit, wide body, spoilers/wings, splitter — realistic drag, downforce, grip and mass effects; visible on the 3D car
-- [ ] 3D FX: exhaust flames on pops, glowing headers/turbo over 850°C EGT, tyre smoke and launch squat, camera shake, shift light
-- [ ] CrazyGames SDK: rewarded ads (+cash, double purse), fullscreen button, touch gas/shift buttons
+- [x] Drag strip: 2D side-view straight track, rival ghost behind a wall, Christmas tree, launch, manual shifting with tachometer, 1/4 · 1/2 · 1 mile
+- [x] Rival ghosts at several difficulty levels; races in career mode with correct rewards
+- [x] Street Rival onboarding (beat the first rival, then unlock the full workshop)
+- [x] Units setting: imperial (mph, lb-ft, °F, ft) or metric
+- [x] Body kits: aero kit, wide body, spoilers/wings, splitter — drag, downforce, grip and mass effects; visible on the car
+- [x] 3D FX: exhaust flames, glowing exhaust-side metal, tyre smoke, launch squat, camera shake and shift light
+- [x] CrazyGames rewarded ads (+cash, double purse) and touch controls; custom fullscreen is disabled on portal builds for compliance
 
 # AUTOMECH roadmap
 
@@ -52,9 +52,9 @@
 - [x] Career screen: chapters, style briefs with live match checks, time/speed targets
 
 ## Next (from the development plan)
-- [ ] Visual customisation: bumpers, spoilers with attachment points
+- [ ] Additional vehicle chassis and authored visual/audio assets
 - [ ] Aerodynamics model and wind tunnel
-- [ ] More platforms, chapters and research points
+- [ ] Additional research progression
 
 ## Rivals round (Nov 2026)
 - [x] Rival car easier to see, closer track view, crowd removed
@@ -64,6 +64,15 @@
 
 ## Prototype 0.5: full career + graphics (in progress)
 - [x] 50 contracts in 5 chapters, new goal types (cheapest build, coolest exhaust, 0-200, wheel power, power cap)
-- [ ] Calibrate new contract targets from solver results (/tmp/cal solver) and add a known solution for each to game.test.ts (tests still expect 11 contracts)
+- [x] Calibrate all 50 contract targets and verify a valid, unlocked known solution for each in game.test.ts
 - [x] Ultra graphics tier: reflective floor, ambient occlusion, SMAA, adaptive resolution, richer workshop
 - [ ] Verify the sculpted car body in a screenshot
+
+## Platform integration (in progress)
+- [x] Shared adapters for browser/dev, CrazyGames, Poki and Playgama
+- [x] Separate browser, CrazyGames, Poki and Playgama build modes
+- [x] Route save data through platform storage with browser fallback
+- [x] Report ready/gameplay lifecycle events and pause gameplay/audio on interruptions
+- [x] Only pay rewarded-ad credits when a supported portal reports a completed ad
+- [ ] Validate SDK injection, ad callbacks and storage in each hosted portal preview
+- [ ] Confirm the Poki deal type before multi-portal distribution

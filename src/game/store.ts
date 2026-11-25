@@ -23,7 +23,7 @@ import { simulate } from "./sim/engine";
 import { findPart } from "./sim/parts";
 import { uiSound } from "./uiSound";
 import { raceSound } from "./raceSound";
-import { portalStorage } from "./crazygames";
+import { getGamePlatform } from "./platform";
 import type { RaceDistance } from "./sim/race";
 import type { Units } from "./units";
 import type { Cosmetics } from "./sim/cosmetics";
@@ -98,7 +98,7 @@ interface Store {
   settings: Settings;
   /** True while a dyno pull is running; the UI locks part changes. */
   dynoRunning: boolean;
-  load: () => void;
+  load: () => Promise<void>;
   setSettings: (s: Partial<Settings>) => void;
   setDynoRunning: (r: boolean) => void;
   updateCosmetics: (c: Partial<Cosmetics>) => void;
@@ -128,16 +128,9 @@ interface Store {
 
 function persist(game: GameState) {
   const raw = serialize(game);
-  try {
-    portalStorage()?.setItem(SAVE_KEY, raw);
-  } catch {
-    /* portal storage unavailable */
-  }
-  try {
-    window.localStorage.setItem(SAVE_KEY, raw);
-  } catch {
-    /* storage unavailable: keep playing in memory */
-  }
+  void getGamePlatform()
+    .save(SAVE_KEY, raw)
+    .catch((error: unknown) => console.error("Game save failed:", error));
 }
 
 export const useGame = create<Store>((set, get) => {
@@ -173,13 +166,8 @@ export const useGame = create<Store>((set, get) => {
       uiSound.spray();
       commit(setCosmetics(get().game, c));
     },
-    load: () => {
-      let raw: string | null = null;
-      try {
-        raw = portalStorage()?.getItem(SAVE_KEY) ?? window.localStorage.getItem(SAVE_KEY);
-      } catch {
-        raw = null;
-      }
+    load: async () => {
+      const raw = await getGamePlatform().load(SAVE_KEY);
       const game = deserialize(raw);
       const lastResult = game.lastRunKey ? simulate(game.build, game.tune) : null;
       const settings = loadSettings();
