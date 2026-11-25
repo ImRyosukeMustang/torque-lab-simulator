@@ -11,7 +11,9 @@ import {
   isChallengeUnlocked,
   type Grade,
 } from "../sim/challenges";
-import { configKey } from "../sim/economy";
+import { configKey, researchProjectBlock } from "../sim/economy";
+import { findPart } from "../sim/parts";
+import { RESEARCH_PROJECTS } from "../sim/research";
 import { useGame } from "../store";
 import { fmtCredits } from "./format";
 
@@ -26,6 +28,7 @@ export function CareerPanel() {
   const game = useGame((s) => s.game);
   const lastResult = useGame((s) => s.lastResult);
   const submit = useGame((s) => s.submit);
+  const research = useGame((s) => s.research);
   const setTab = useGame((s) => s.setTab);
   const firstOpen = CHALLENGES.find((c) => !game.progress[c.id]) ?? CHALLENGES[0];
   const [openId, setOpenId] = useState(firstOpen?.id ?? "c1");
@@ -58,6 +61,7 @@ export function CareerPanel() {
       out.reward > 0
         ? `Contract paid ${fmtCredits(out.reward)}.`
         : "No extra payment for the grade: you already hold it or better.",
+      out.researchPoints > 0 ? `Earned ${out.researchPoints} R&D ${out.researchPoints === 1 ? "point" : "points"}.` : "",
       out.styleBonus > 0 ? `Style brief matched: +${fmtCredits(out.styleBonus)}.` : "",
     ];
     toast.success(`${gradeLabel[out.evaluation.grade]} grade`, {
@@ -81,6 +85,49 @@ export function CareerPanel() {
           ))}
         </div>
       </div>
+      <section className="space-y-2 rounded-md border border-border bg-card p-3">
+        <div className="flex items-baseline justify-between gap-2">
+          <div>
+            <h3 className="text-[10px] font-semibold uppercase tracking-[0.16em] text-primary">Engineering research</h3>
+            <p className="mt-1 text-[11px] text-muted-foreground">Improve contract grades to earn R&D points and develop optional part blueprints.</p>
+          </div>
+          <span className="shrink-0 font-mono text-sm tabular">{game.researchPoints} RP</span>
+        </div>
+        {RESEARCH_PROJECTS.map((project) => {
+          const block = researchProjectBlock(game, project.id);
+          const required = CHALLENGES.find((c) => c.id === project.requiredChallenge);
+          const part = findPart(project.partId);
+          const researched = block === "researched";
+          return (
+            <article key={project.id} className="flex flex-wrap items-center justify-between gap-3 rounded border border-border bg-background/40 p-2.5">
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-baseline gap-x-2">
+                  <h4 className="text-sm font-semibold">{project.name}</h4>
+                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{project.field}</span>
+                </div>
+                <p className="mt-0.5 text-xs text-muted-foreground">{project.description}</p>
+                <p className="mt-1 text-[10px] text-muted-foreground">
+                  Unlocks {part?.name ?? project.partId}
+                  {required ? ` · Requires Level ${required.level}: ${required.title}` : ""}
+                  {!researched && block === "points" ? ` · Need ${project.cost - game.researchPoints} more RP` : ""}
+                </p>
+              </div>
+              <Button
+                size="sm"
+                variant={researched ? "secondary" : "outline"}
+                disabled={block !== null}
+                onClick={() => {
+                  if (research(project.id)) {
+                    toast.success("Research complete", { description: `${part?.name ?? project.partId} blueprint unlocked.` });
+                  }
+                }}
+              >
+                {researched ? "Researched" : `Research · ${project.cost} RP`}
+              </Button>
+            </article>
+          );
+        })}
+      </section>
       {CHAPTERS.map((chap) => {
         const list = CHALLENGES.filter((c) => c.chapter === chap.id);
         const done = list.filter((c) => game.progress[c.id]).length;

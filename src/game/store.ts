@@ -15,6 +15,7 @@ import {
   serialize,
   setCosmetics,
   setTune,
+  startResearch,
   submitChallenge,
   type GameState,
   type SubmitOutcome,
@@ -109,6 +110,7 @@ interface Store {
   setHoodOpen: (o: boolean) => void;
   setHovered: (s: SlotId | null) => void;
   buy: (id: string) => void;
+  research: (projectId: string) => boolean;
   sell: (id: string) => void;
   install: (id: string) => void;
   updateTune: (t: Partial<Tune>) => void;
@@ -207,6 +209,17 @@ export const useGame = create<Store>((set, get) => {
       if (next === get().game) return uiSound.deny();
       uiSound.buy();
       commit(next);
+    },
+    research: (projectId) => {
+      const current = get().game;
+      const next = startResearch(current, projectId);
+      if (next === current) {
+        uiSound.deny();
+        return false;
+      }
+      uiSound.buy();
+      commit(next);
+      return true;
     },
     sell: (id) => {
       const next = sellPart(get().game, id);

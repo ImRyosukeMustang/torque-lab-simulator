@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { CHALLENGES, evaluateChallenge, rewardFor } from "./challenges";
+import { CHALLENGES, evaluateChallenge, GRADE_RANK, rewardFor } from "./challenges";
 import { simulate } from "./engine";
-import { buyPart, configKey, deserialize, SAVE_VERSION, installPart, newGame, recordDynoRun, sellPart, serialize, setCosmetics, setTune, STARTING_CREDITS, submitChallenge, type GameState } from "./economy";
+import { buyPart, configKey, deserialize, SAVE_VERSION, installPart, newGame, purchaseBlock, recordDynoRun, researchProjectBlock, sellPart, serialize, setCosmetics, setTune, startResearch, STARTING_CREDITS, submitChallenge, type GameState } from "./economy";
 import { clampTune, findPart, getPart, STOCK_BUILD, STOCK_TUNE } from "./parts";
+import { RESEARCH_PROJECTS } from "./research";
 import type { Build, Tune } from "./types";
 
 const ch = (id: string) => CHALLENGES.find((c) => c.id === id)!;
@@ -24,6 +25,7 @@ describe("challenges", () => {
       for (const id of Object.values(SOLUTIONS[c.id]!.build)) {
         const p = findPart(id!)!;
         expect(!p.unlockAfter || done.has(p.unlockAfter), `${c.id} uses locked ${id}`).toBe(true);
+        expect(!RESEARCH_PROJECTS.some((project) => project.partId === id), `${c.id} depends on researched ${id}`).toBe(true);
       }
     }
   });
@@ -97,12 +99,43 @@ describe("economy and saves", () => {
     expect(out.evaluation?.passed).toBe(true);
     expect(out.reward).toBe(1500);
     expect(out.state.credits).toBe(g.credits + 1500);
-    expect(submitChallenge(out.state, "c1").reward).toBe(0);
+    expect(out.researchPoints).toBe(GRADE_RANK[out.evaluation!.grade!]);
+    expect(out.state.researchPoints).toBe(out.researchPoints);
+    expect(submitChallenge(out.state, "c1")).toMatchObject({ reward: 0, researchPoints: 0 });
   });
 
   it("later challenges are locked until the previous one is completed", () => {
     const g = recordDynoRun(newGame());
     expect(submitChallenge(g, "c2").refused).toBe("locked");
+  });
+
+  it("research spends grade-earned points to unlock optional part blueprints", () => {
+    const project = RESEARCH_PROJECTS.find((entry) => entry.partId === "aero-gt")!;
+    const early = { ...newGame(), researchPoints: project.cost + 1 };
+    expect(researchProjectBlock(early, project.id)).toBe("locked");
+    expect(startResearch(early, project.id)).toBe(early);
+
+    const eligible = { ...early, progress: { c3: "gold" as const } };
+    expect(purchaseBlock(eligible, project.partId)).toBe("research");
+    const researched = startResearch(eligible, project.id);
+    expect(researched.researchPoints).toBe(1);
+    expect(researched.researched).toContain(project.id);
+    expect(deserialize(serialize(researched))).toEqual(researched);
+    expect(purchaseBlock(researched, project.partId)).toBeNull();
+    expect(buyPart(researched, project.partId).owned).toContain(project.partId);
+  });
+
+  it("migrates completed contract grades into research points", () => {
+    const v5 = JSON.parse(serialize(newGame()));
+    v5.version = 5;
+    v5.progress = { c1: "gold", c2: "silver" };
+    delete v5.researchPoints;
+    delete v5.researched;
+
+    const migrated = deserialize(JSON.stringify(v5));
+    expect(migrated.version).toBe(SAVE_VERSION);
+    expect(migrated.researchPoints).toBe(5);
+    expect(migrated.researched).toEqual([]);
   });
 
   it("a contract already graded can be re-submitted even if an earlier one was inserted later", () => {

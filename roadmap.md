@@ -54,7 +54,7 @@
 ## Next (from the development plan)
 - [ ] Additional vehicle chassis and authored visual/audio assets
 - [x] Aerodynamics model and wind tunnel: shared drag/downforce loads from fitted bodywork, speed-squared wind-tunnel chart, factory-drag comparison, metric/US display
-- [ ] Additional research progression
+- [x] Career research progression: grade-earned R&D points unlock optional aero and chassis blueprints; save v5 migrates existing contract grades into points
 
 ## Rivals round (Nov 2026)
 - [x] Rival car easier to see, closer track view, crowd removed

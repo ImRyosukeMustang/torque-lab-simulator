@@ -122,7 +122,7 @@ export function TopBar() {
           <AlertDialogContent>
             <AlertDialogHeader>
               <AlertDialogTitle>Start a new career?</AlertDialogTitle>
-              <AlertDialogDescription>This erases your credits, parts, race wins and contract grades saved in this browser.</AlertDialogDescription>
+              <AlertDialogDescription>This erases your credits, parts, R&amp;D points, research, race wins and contract grades saved in this browser.</AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancel</AlertDialogCancel>

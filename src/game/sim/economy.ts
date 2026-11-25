@@ -5,11 +5,12 @@ import { isRaceUnlocked, purseFor, RACE_EVENTS } from "./race";
 import { simulate } from "./engine";
 import { DEFAULT_COSMETICS, type Cosmetics } from "./cosmetics";
 import { clampTune, findPart, getPart, PARTS, SLOT_ORDER, STOCK_BUILD, STOCK_TUNE } from "./parts";
+import { RESEARCH_PROJECTS, researchProjectForPart } from "./research";
 import type { Build, Tune } from "./types";
 
 export const STARTING_CREDITS = 3000;
 export const SELL_RATE = 0.6;
-export const SAVE_VERSION = 5;
+export const SAVE_VERSION = 6;
 /** Credits paid for watching a rewarded ad. */
 export const AD_REWARD = 2500;
 
@@ -30,6 +31,8 @@ export interface GameState {
   raceWins: Record<string, number>;
   /** Best elapsed time from green (s) per race event or free-race key. */
   raceBest: Record<string, number>;
+  researchPoints: number;
+  researched: string[];
   /** New careers start with the Street Rival race; the full workshop opens after the first win. */
   tutorial: "street-rival" | "done";
 }
@@ -48,6 +51,8 @@ export function newGame(): GameState {
     styleBonusPaid: [],
     raceWins: {},
     raceBest: {},
+    researchPoints: 0,
+    researched: [],
     tutorial: "street-rival",
   };
 }
@@ -108,15 +113,38 @@ export function configKey(build: Build, tune: Tune): string {
   return [...SLOT_ORDER.map((s) => build[s]), t.boostTarget.toFixed(2), t.lambdaTarget.toFixed(2), t.timingOffset, t.revLimit, t.gearRatios.map((r) => r.toFixed(2)).join(","), t.finalDrive.toFixed(2)].join("|");
 }
 
-export type PurchaseBlock = "owned" | "locked" | "credits" | null;
+export type PurchaseBlock = "owned" | "locked" | "research" | "credits" | null;
 
 export function purchaseBlock(state: GameState, partId: string): PurchaseBlock {
   const part = findPart(partId);
   if (!part) return "locked";
   if (state.owned.includes(partId)) return "owned";
   if (part.unlockAfter && !state.progress[part.unlockAfter]) return "locked";
+  const project = researchProjectForPart(partId);
+  if (project && !state.researched.includes(project.id)) return "research";
   if (state.credits < part.price) return "credits";
   return null;
+}
+
+export type ResearchBlock = "unknown" | "researched" | "locked" | "points" | null;
+
+export function researchProjectBlock(state: GameState, projectId: string): ResearchBlock {
+  const project = RESEARCH_PROJECTS.find((entry) => entry.id === projectId);
+  if (!project) return "unknown";
+  if (state.researched.includes(projectId)) return "researched";
+  if (!state.progress[project.requiredChallenge]) return "locked";
+  if (state.researchPoints < project.cost) return "points";
+  return null;
+}
+
+export function startResearch(state: GameState, projectId: string): GameState {
+  if (researchProjectBlock(state, projectId) !== null) return state;
+  const project = RESEARCH_PROJECTS.find((entry) => entry.id === projectId)!;
+  return {
+    ...state,
+    researchPoints: state.researchPoints - project.cost,
+    researched: [...state.researched, projectId],
+  };
 }
 
 export function buyPart(state: GameState, partId: string): GameState {
@@ -159,6 +187,7 @@ export interface SubmitOutcome {
   state: GameState;
   evaluation: Evaluation | null;
   reward: number;
+  researchPoints: number;
   /** Extra credits paid for matching the client's style brief (first time only). */
   styleBonus: number;
   /** Why a submission was refused before grading. */
@@ -166,7 +195,7 @@ export interface SubmitOutcome {
 }
 
 export function submitChallenge(state: GameState, challengeId: string): SubmitOutcome {
-  const refuse = (refused: SubmitOutcome["refused"]): SubmitOutcome => ({ state, evaluation: null, reward: 0, styleBonus: 0, ...(refused ? { refused } : {}) });
+  const refuse = (refused: SubmitOutcome["refused"]): SubmitOutcome => ({ state, evaluation: null, reward: 0, researchPoints: 0, styleBonus: 0, ...(refused ? { refused } : {}) });
   const ch = CHALLENGES.find((c) => c.id === challengeId);
   if (!ch) return refuse("locked");
   // Same rule as the career screen: open once the previous contract is graded, and always open once graded.
@@ -174,9 +203,10 @@ export function submitChallenge(state: GameState, challengeId: string): SubmitOu
   if (!state.lastRunKey) return refuse("no-run");
   if (state.lastRunKey !== configKey(state.build, state.tune)) return refuse("stale-run");
   const evaluation = evaluateChallenge(ch, state.build, simulate(state.build, state.tune), state.cosmetics);
-  if (!evaluation.grade) return { state, evaluation, reward: 0, styleBonus: 0 };
+  if (!evaluation.grade) return { state, evaluation, reward: 0, researchPoints: 0, styleBonus: 0 };
   const prev = state.progress[ch.id] ?? null;
   const reward = rewardFor(ch, evaluation.grade, prev);
+  const researchPoints = Math.max(0, GRADE_RANK[evaluation.grade] - (prev ? GRADE_RANK[prev] : 0));
   const best = prev && GRADE_RANK[prev] >= GRADE_RANK[evaluation.grade] ? prev : evaluation.grade;
   const payStyle = Boolean(ch.style && evaluation.stylePassed && !state.styleBonusPaid.includes(ch.id));
   const styleBonus = payStyle && ch.style ? ch.style.bonus : 0;
@@ -185,10 +215,12 @@ export function submitChallenge(state: GameState, challengeId: string): SubmitOu
       ...state,
       credits: state.credits + reward + styleBonus,
       progress: { ...state.progress, [ch.id]: best },
+      researchPoints: state.researchPoints + researchPoints,
       styleBonusPaid: payStyle ? [...state.styleBonusPaid, ch.id] : state.styleBonusPaid,
     },
     evaluation,
     reward,
+    researchPoints,
     styleBonus,
   };
 }
@@ -207,6 +239,7 @@ const cosmeticsSchema = z.object({
 });
 // Accepts v1 saves (7 engine slots, no cosmetics) and v2 saves (AFR tune) and migrates them on load.
 // v4 added gear ratios and final drive; older tunes get the fitted gearbox's defaults on load.
+// v6 adds researched blueprints; older contract grades are converted into research points.
 const gearFields = { gearRatios: z.array(z.number()).optional(), finalDrive: z.number().optional() };
 const tuneSchema = z.union([
   z.object({ boostTarget: z.number(), lambdaTarget: z.number(), timingOffset: z.number(), revLimit: z.number(), ...gearFields }),
@@ -216,7 +249,7 @@ const tuneSchema = z.union([
     .transform(({ afrTarget, ...t }) => ({ ...t, lambdaTarget: Math.round((afrTarget / 14.7) * 100) / 100 })),
 ]);
 const saveSchema = z.object({
-  version: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4), z.literal(SAVE_VERSION)]),
+  version: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4), z.literal(5), z.literal(SAVE_VERSION)]),
   credits: z.number().finite().min(0),
   owned: z.array(z.string()),
   build: z.record(z.string(), z.string()),
@@ -228,6 +261,8 @@ const saveSchema = z.object({
   styleBonusPaid: z.array(z.string()).optional(),
   raceWins: z.record(z.string(), z.number().int().min(0)).optional(),
   raceBest: z.record(z.string(), z.number().positive()).optional(),
+  researchPoints: z.number().int().min(0).optional(),
+  researched: z.array(z.string()).optional(),
   tutorial: z.enum(["street-rival", "done"]).optional(),
 });
 
@@ -275,6 +310,8 @@ export function deserialize(raw: string | null): GameState {
       styleBonusPaid: (parsed.styleBonusPaid ?? []).filter((id) => CHALLENGES.some((c) => c.id === id)),
       raceWins: Object.fromEntries(Object.entries(parsed.raceWins ?? {}).filter(([id]) => RACE_EVENTS.some((e) => e.id === id))),
       raceBest: parsed.raceBest ?? {},
+      researchPoints: parsed.researchPoints ?? Object.values(parsed.progress).reduce((total, grade) => total + GRADE_RANK[grade], 0),
+      researched: (parsed.researched ?? []).filter((id) => RESEARCH_PROJECTS.some((project) => project.id === id)),
       // Saves from before the Street Rival intro belong to players who already know the workshop.
       tutorial: parsed.tutorial ?? "done",
     };

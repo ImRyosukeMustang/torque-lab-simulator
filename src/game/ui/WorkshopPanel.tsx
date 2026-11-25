@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { CHALLENGES } from "../sim/challenges";
 import { purchaseBlock, SELL_RATE } from "../sim/economy";
 import { BODY_SLOTS, DRIVETRAIN_SLOTS, ENGINE_SLOTS, getPart, partsForSlot, SLOT_HELP, SLOT_LABEL } from "../sim/parts";
+import { researchProjectForPart } from "../sim/research";
 import { useGame } from "../store";
 import { localizeText } from "../units";
 import { fmtCredits, partSpecs } from "./format";
@@ -48,6 +49,7 @@ export function WorkshopPanel() {
   const selectSlot = useGame((s) => s.selectSlot);
   const setHovered = useGame((s) => s.setHovered);
   const buy = useGame((s) => s.buy);
+  const setTab = useGame((s) => s.setTab);
   const sell = useGame((s) => s.sell);
   const install = useGame((s) => s.install);
   const unlockTitle = (id?: string) => CHALLENGES.find((c) => c.id === id);
@@ -94,6 +96,7 @@ export function WorkshopPanel() {
           const block = purchaseBlock(game, p.id);
           const owned = block === "owned";
           const unlock = unlockTitle(p.unlockAfter);
+          const researchProject = researchProjectForPart(p.id);
           return (
             <div key={p.id} className={cn("rounded-md border bg-card p-3", installed ? "border-primary/60" : "border-border")}>
               <div className="flex items-start justify-between gap-3">
@@ -131,6 +134,10 @@ export function WorkshopPanel() {
                   <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
                     <Lock className="h-3.5 w-3.5" /> Complete Level {unlock?.level} “{unlock?.title}”
                   </span>
+                ) : block === "research" ? (
+                  <Button size="sm" variant="outline" onClick={() => setTab("career")}>
+                    <Lock /> Research blueprint{researchProject ? ` · ${researchProject.cost} RP` : ""}
+                  </Button>
                 ) : (
                   <Button size="sm" variant="outline" disabled={block === "credits"} onClick={() => buy(p.id)}>
                     <ShoppingCart /> {block === "credits" ? "Not enough credits" : `Buy ${fmtCredits(p.price)}`}
