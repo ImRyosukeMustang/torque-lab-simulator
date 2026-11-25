@@ -53,6 +53,7 @@ export interface CarDraw {
   caliper?: string;
   stripe?: "none" | "twin" | "center" | "side";
   stripeColor?: string;
+  underglowColor?: string;
   /** 0 matte .. 1 pearl: strength of the paint's highlight. */
   gloss?: number;
 }
@@ -354,6 +355,19 @@ function drawCar(ctx: CanvasRenderingContext2D, cx: number, ground: number, S: n
   const pitch = Math.max(-0.035, Math.min(0.06, car.accel * 0.0065));
   ctx.save();
 
+  if (!car.ghost && car.underglowColor) {
+    const glow = ctx.createRadialGradient(cx, ground - S * 0.08, 0, cx, ground - S * 0.08, S * 2.2);
+    glow.addColorStop(0, withAlpha(car.underglowColor, 0.42));
+    glow.addColorStop(1, withAlpha(car.underglowColor, 0));
+    ctx.save();
+    ctx.globalCompositeOperation = "screen";
+    ctx.fillStyle = glow;
+    ctx.beginPath();
+    ctx.ellipse(cx, ground - S * 0.08, S * 2.25, S * 0.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
   // Body, pitched about the rear axle (launch squat lifts the nose)
   ctx.save();
   ctx.translate(X(-1.33), Y(wheelR));
@@ -587,6 +601,11 @@ function shade(hex: string, f: number): string {
   const n = parseInt(hex.slice(1), 16);
   const c = (v: number) => Math.max(0, Math.min(255, Math.round(v * f)));
   return `rgb(${c((n >> 16) & 255)},${c((n >> 8) & 255)},${c(n & 255)})`;
+}
+
+function withAlpha(hex: string, alpha: number): string {
+  const n = parseInt(hex.slice(1), 16);
+  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${alpha})`;
 }
 
 function mix(a: string, b: string, t: number): string {

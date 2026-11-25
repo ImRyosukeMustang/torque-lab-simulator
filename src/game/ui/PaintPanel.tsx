@@ -1,4 +1,4 @@
-import { Check, RotateCcw } from "lucide-react";
+import { Check, RotateCcw, Sparkles } from "lucide-react";
 import type { ReactNode } from "react";
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ import {
   RIM_COLORS,
   RIM_LABEL,
   STRIPE_LABEL,
+  UNDERGLOW_COLORS,
   type PaintFinish,
   type RimStyle,
   type StripeStyle,
@@ -229,6 +230,23 @@ export function PaintPanel() {
           <span>Clear</span>
           <span>Limo</span>
         </div>
+      </Section>
+
+      <Section title="Underglow" value={look.underglow ? nameOf(UNDERGLOW_COLORS, look.underglowColor) : "Off"}>
+        <button
+          type="button"
+          aria-pressed={look.underglow}
+          onClick={() => update({ underglow: !look.underglow })}
+          className={cn(
+            "flex w-full items-center justify-between rounded-md border px-3 py-2 text-sm transition-colors",
+            look.underglow ? "border-primary/60 bg-primary/15 text-foreground" : "border-border bg-background/40 text-muted-foreground hover:text-foreground",
+          )}
+        >
+          <span className="flex items-center gap-2"><Sparkles className="h-4 w-4" /> {look.underglow ? "Glow enabled" : "Add a light kit"}</span>
+          <span className="text-[10px] uppercase tracking-wider">{look.underglow ? "On" : "Off"}</span>
+        </button>
+        {look.underglow && <Swatches options={UNDERGLOW_COLORS} value={look.underglowColor} onPick={(underglowColor) => update({ underglowColor })} size="sm" />}
+        <p className="text-[10px] leading-relaxed text-muted-foreground">A visual-only lighting option. It never changes power, grip, or race results.</p>
       </Section>
     </div>
   );

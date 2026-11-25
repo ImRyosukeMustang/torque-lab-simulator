@@ -263,7 +263,7 @@ export function RaceScreen({ cfg }: { cfg: RaceConfig }) {
         dt,
         distance: dist,
         units: useGame.getState().settings.units,
-        player: { x: s.x, kmh: s.v * 3.6, accel: s.a, spin: s.spin, pop: s.pop, wheelAngle: wheel, paint: look.paint, rim: look.rimColor, tint: look.tint, kit, ghost: false, rimStyle: look.rimStyle, caliper: look.caliper, stripe: look.stripe, stripeColor: look.stripeColor, gloss: GLOSS[look.finish] },
+        player: { x: s.x, kmh: s.v * 3.6, accel: s.a, spin: s.spin, pop: s.pop, wheelAngle: wheel, paint: look.paint, rim: look.rimColor, tint: look.tint, kit, ghost: false, rimStyle: look.rimStyle, caliper: look.caliper, stripe: look.stripe, stripeColor: look.stripeColor, ...(look.underglow ? { underglowColor: look.underglowColor } : {}), gloss: GLOSS[look.finish] },
         rival: { x: g.x, kmh: g.kmh, accel: 0, spin: g.spin, pop: g.pop, wheelAngle: rivalWheel, paint: rival.paint, rim: "#9ea3a8", tint: 0.6, kit: rivalKit, ghost: true, label: rivalTag },
       });
       // Sound

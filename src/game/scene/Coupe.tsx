@@ -161,6 +161,21 @@ function plateTexture(text: string) {
   return t;
 }
 
+function underglowTexture() {
+  const c = document.createElement("canvas");
+  c.width = c.height = 128;
+  const g = c.getContext("2d")!;
+  const gradient = g.createRadialGradient(64, 64, 4, 64, 64, 64);
+  gradient.addColorStop(0, "rgba(255,255,255,0.9)");
+  gradient.addColorStop(0.45, "rgba(255,255,255,0.35)");
+  gradient.addColorStop(1, "rgba(255,255,255,0)");
+  g.fillStyle = gradient;
+  g.fillRect(0, 0, 128, 128);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+
 const FINISH: Record<PaintFinish, { metalness: number; roughness: number; clearcoat: number; clearcoatRoughness: number; iridescence: number; flakes: number }> = {
   gloss: { metalness: 0.05, roughness: 0.24, clearcoat: 1, clearcoatRoughness: 0.03, iridescence: 0, flakes: 0 },
   metallic: { metalness: 0.6, roughness: 0.36, clearcoat: 1, clearcoatRoughness: 0.05, iridescence: 0, flakes: 0.22 },
@@ -546,6 +561,8 @@ export function Coupe({ children }: { children?: React.ReactNode }) {
     [],
   );
   const flakes = useMemo(flakeTexture, []);
+  const underglow = useMemo(underglowTexture, []);
+  useEffect(() => () => underglow.dispose(), [underglow]);
   const paint = useMemo(() => new THREE.MeshPhysicalMaterial({ color: C.paint }), []);
   useEffect(() => {
     applyPaint(paint, flakes, look.paint, look.finish);
@@ -595,6 +612,22 @@ export function Coupe({ children }: { children?: React.ReactNode }) {
 
   return (
     <group>
+      {look.underglow && (
+        <>
+          <mesh position={[0, 0.025, 0]} rotation-x={-Math.PI / 2} renderOrder={1}>
+            <planeGeometry args={[3.8, 2.1]} />
+            <meshBasicMaterial
+              map={underglow}
+              color={look.underglowColor}
+              transparent
+              opacity={0.75}
+              depthWrite={false}
+              toneMapped={false}
+            />
+          </mesh>
+          <pointLight position={[0, 0.28, 0]} color={look.underglowColor} intensity={0.7} distance={2.8} decay={2} />
+        </>
+      )}
       <mesh geometry={geo.rear} material={paint} castShadow receiveShadow />
       <mesh geometry={geo.fenderL} material={paint} castShadow receiveShadow />
       <mesh geometry={geo.fenderR} material={paint} castShadow receiveShadow />

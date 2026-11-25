@@ -11,6 +11,8 @@ export interface Cosmetics {
   caliper: string;
   stripe: StripeStyle;
   stripeColor: string;
+  underglow: boolean;
+  underglowColor: string;
   /** Window tint 0 (light) .. 1 (limo). */
   tint: number;
 }
@@ -23,6 +25,8 @@ export const DEFAULT_COSMETICS: Cosmetics = {
   caliper: "#c58a1c",
   stripe: "none",
   stripeColor: "#e6e7e3",
+  underglow: false,
+  underglowColor: "#38bdf8",
   tint: 0.6,
 };
 
@@ -57,6 +61,15 @@ export const CALIPER_COLORS: { name: string; hex: string }[] = [
   { name: "Green", hex: "#2f7a3e" },
   { name: "Black", hex: "#1b1c1e" },
   { name: "Silver", hex: "#a7abb0" },
+];
+
+export const UNDERGLOW_COLORS: { name: string; hex: string }[] = [
+  { name: "Ice blue", hex: "#38bdf8" },
+  { name: "Violet", hex: "#a855f7" },
+  { name: "Crimson", hex: "#ef4444" },
+  { name: "Emerald", hex: "#22c55e" },
+  { name: "Amber", hex: "#f59e0b" },
+  { name: "White", hex: "#e2e8f0" },
 ];
 
 export const FINISH_LABEL: Record<PaintFinish, string> = {

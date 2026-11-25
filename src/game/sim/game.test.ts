@@ -138,6 +138,18 @@ describe("economy and saves", () => {
     expect(migrated.researched).toEqual([]);
   });
 
+  it("adds default underglow settings when migrating a version 6 save", () => {
+    const v6 = JSON.parse(serialize(newGame()));
+    v6.version = 6;
+    delete v6.cosmetics.underglow;
+    delete v6.cosmetics.underglowColor;
+
+    const migrated = deserialize(JSON.stringify(v6));
+    expect(migrated.version).toBe(SAVE_VERSION);
+    expect(migrated.cosmetics.underglow).toBe(false);
+    expect(migrated.cosmetics.underglowColor).toBe("#38bdf8");
+  });
+
   it("a contract already graded can be re-submitted even if an earlier one was inserted later", () => {
     // c12 was added before c2 after some players had graded c2: they must still be able to improve c2.
     const sol = SOLUTIONS["c2"]!;
@@ -196,12 +208,14 @@ describe("economy and saves", () => {
     expect(g.credits).toBe(3000);
   });
 
-  it("paint choices persist through a save and invalid colours are rejected", () => {
-    const g = setCosmetics(newGame(), { paint: "#16264a", finish: "matte", rimStyle: "dish" });
+  it("paint and underglow choices persist through a save and invalid colours are rejected", () => {
+    const g = setCosmetics(newGame(), { paint: "#16264a", finish: "matte", rimStyle: "dish", underglow: true, underglowColor: "#a855f7" });
     const back = deserialize(serialize(g));
     expect(back.cosmetics.paint).toBe("#16264a");
     expect(back.cosmetics.finish).toBe("matte");
     expect(back.cosmetics.rimStyle).toBe("dish");
+    expect(back.cosmetics.underglow).toBe(true);
+    expect(back.cosmetics.underglowColor).toBe("#a855f7");
     const bad = JSON.parse(serialize(g));
     bad.cosmetics.paint = "red";
     expect(deserialize(JSON.stringify(bad)).cosmetics.paint).toBe("#9e3b1a");

@@ -10,7 +10,7 @@ import type { Build, Tune } from "./types";
 
 export const STARTING_CREDITS = 3000;
 export const SELL_RATE = 0.6;
-export const SAVE_VERSION = 6;
+export const SAVE_VERSION = 7;
 /** Credits paid for watching a rewarded ad. */
 export const AD_REWARD = 2500;
 
@@ -236,10 +236,13 @@ const cosmeticsSchema = z.object({
   stripe: z.enum(["none", "twin", "center", "side"]),
   stripeColor: hex,
   tint: z.number().min(0).max(1),
+  underglow: z.boolean().default(DEFAULT_COSMETICS.underglow),
+  underglowColor: hex.default(DEFAULT_COSMETICS.underglowColor),
 });
 // Accepts v1 saves (7 engine slots, no cosmetics) and v2 saves (AFR tune) and migrates them on load.
 // v4 added gear ratios and final drive; older tunes get the fitted gearbox's defaults on load.
 // v6 adds researched blueprints; older contract grades are converted into research points.
+// v7 adds customizable underglow; existing cosmetics retain their choices with defaults for the new fields.
 const gearFields = { gearRatios: z.array(z.number()).optional(), finalDrive: z.number().optional() };
 const tuneSchema = z.union([
   z.object({ boostTarget: z.number(), lambdaTarget: z.number(), timingOffset: z.number(), revLimit: z.number(), ...gearFields }),
@@ -249,7 +252,7 @@ const tuneSchema = z.union([
     .transform(({ afrTarget, ...t }) => ({ ...t, lambdaTarget: Math.round((afrTarget / 14.7) * 100) / 100 })),
 ]);
 const saveSchema = z.object({
-  version: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4), z.literal(5), z.literal(SAVE_VERSION)]),
+  version: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4), z.literal(5), z.literal(6), z.literal(SAVE_VERSION)]),
   credits: z.number().finite().min(0),
   owned: z.array(z.string()),
   build: z.record(z.string(), z.string()),

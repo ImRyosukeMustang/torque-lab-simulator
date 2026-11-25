@@ -22,28 +22,61 @@ export function StreetRivalCard() {
   const turbo = getPart("turbo", game.build.turbo).maximumFlow > 0;
   const boostSet = turbo && game.tune.boostTarget >= 0.4;
   const steps = [
-    { done: turbo, label: "Bolt on the AT-25 turbo", action: !turbo ? <Button size="sm" variant="outline" onClick={() => selectSlot("turbo")}><Wrench /> Turbo parts</Button> : null },
-    { done: boostSet, label: `Set boost (${pressure(game.tune.boostTarget, units)})`, action: turbo && !boostSet ? <Button size="sm" variant="outline" onClick={() => selectSlot("ecu")}>ECU</Button> : null },
-    { done: false, label: "Beat Kai over the quarter mile", action: <Button size="sm" variant="race" onClick={() => startRace({ eventId: "r1", rivalId: "kai", distance: "quarter" })}><Flag /> Race</Button> },
+    {
+      done: turbo,
+      label: "Install the AT-25 turbo",
+      detail: "Open Turbo parts, buy the $2,400 AT-25, then fit it to the car.",
+      action: !turbo ? <Button size="sm" variant="outline" onClick={() => selectSlot("turbo")}><Wrench /> Turbo parts</Button> : null,
+    },
+    {
+      done: boostSet,
+      label: `Check the boost target (${pressure(game.tune.boostTarget, units)})`,
+      detail: "The starter tune is race-ready at 0.4 bar or more; save ECU upgrades for later.",
+      action: turbo && !boostSet ? <Button size="sm" variant="outline" onClick={() => selectSlot("ecu")}>ECU</Button> : null,
+    },
+    {
+      done: false,
+      label: "Beat Kai over the quarter mile",
+      detail: "Use the launch lights and shift through the gears to earn your first win.",
+      action: <Button size="sm" variant="race" onClick={() => startRace({ eventId: "r1", rivalId: "kai", distance: "quarter" })}><Flag /> Race</Button>,
+    },
   ];
+  const activeStep = steps.findIndex((step) => !step.done);
+  const completedSteps = steps.filter((step) => step.done).length;
   return (
-    <section className="space-y-3 rounded-lg border border-primary/50 bg-primary/10 p-4 shadow-glow">
-      <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-primary">Street Rival</div>
+    <section className="space-y-3 rounded-lg border border-primary/50 bg-gradient-to-br from-primary/15 via-card to-card p-4 shadow-glow">
+      <div className="flex items-center justify-between gap-2">
+        <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-primary">First-build walkthrough</div>
+        <span className="rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 font-mono text-[10px] text-primary">
+          {completedSteps} / 3 complete
+        </span>
+      </div>
       <h2 className="font-display text-2xl font-bold leading-tight">Your rival's car makes 220 hp.</h2>
-      <p className="text-sm text-muted-foreground">Bolt on a turbo, set boost, beat him on the strip. Win and the full workshop opens up.</p>
+      <p className="text-sm text-muted-foreground">Follow the three steps to build a race-ready car. Your $3,000 starter fund covers the turbo; winning opens the full workshop and career ladder.</p>
       <ol className="space-y-2">
         {steps.map((st, i) => (
-          <li key={st.label} className="flex items-center justify-between gap-2 rounded-md border border-border bg-card/70 px-3 py-2">
-            <span className="flex items-center gap-2 text-sm">
-              <span className={cn("flex h-5 w-5 items-center justify-center rounded-full border text-[10px] font-semibold", st.done ? "border-success bg-success/20 text-success" : "border-border text-muted-foreground")}>
+          <li key={st.label} className={cn("rounded-md border px-3 py-2 transition-colors", i === activeStep ? "border-primary/50 bg-primary/5" : "border-border bg-card/70")}>
+            <div className="flex items-center justify-between gap-2">
+              <span className="flex min-w-0 items-center gap-2 text-sm">
+                <span className={cn("flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-[10px] font-semibold", st.done ? "border-success bg-success/20 text-success" : i === activeStep ? "border-primary text-primary" : "border-border text-muted-foreground")}>
                 {st.done ? <Check className="h-3 w-3" /> : i + 1}
+                </span>
+                <span className={cn(st.done ? "text-muted-foreground" : "text-foreground")}>{st.label}</span>
               </span>
-              {st.label}
-            </span>
-            {st.action}
+              {st.action}
+            </div>
+            <p className="ml-7 mt-1 text-[11px] leading-relaxed text-muted-foreground">{st.detail}</p>
           </li>
         ))}
       </ol>
+      <div className="rounded-md border border-border/70 bg-background/50 p-3">
+        <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">First race controls</div>
+        <div className="grid grid-cols-1 gap-1.5 text-[11px] leading-relaxed text-muted-foreground sm:grid-cols-3">
+          <p><span className="font-semibold text-foreground">Rev:</span> hold W / ↑ or GAS into the green arc.</p>
+          <p><span className="font-semibold text-foreground">Launch + upshift:</span> Space / → or tap LAUNCH / SHIFT.</p>
+          <p><span className="font-semibold text-foreground">Downshift:</span> Shift / ← or tap SHIFT DOWN.</p>
+        </div>
+      </div>
       <button className="text-[11px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline" onClick={skip}>
         I know my way around: skip the intro
       </button>

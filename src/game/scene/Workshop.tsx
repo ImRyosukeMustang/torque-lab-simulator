@@ -134,6 +134,48 @@ function signTexture() {
   return t;
 }
 
+function posterTexture() {
+  const c = document.createElement("canvas");
+  c.width = 512;
+  c.height = 384;
+  const g = c.getContext("2d")!;
+  g.fillStyle = "#18212a";
+  g.fillRect(0, 0, 512, 384);
+  g.fillStyle = "#e9a52d";
+  g.fillRect(0, 0, 512, 18);
+  g.fillRect(0, 366, 512, 18);
+  g.strokeStyle = "rgba(142,177,190,0.2)";
+  g.lineWidth = 1;
+  for (let x = 24; x < 512; x += 32) {
+    g.beginPath();
+    g.moveTo(x, 20);
+    g.lineTo(x, 364);
+    g.stroke();
+  }
+  for (let y = 32; y < 384; y += 32) {
+    g.beginPath();
+    g.moveTo(20, y);
+    g.lineTo(492, y);
+    g.stroke();
+  }
+  g.strokeStyle = "#f4b443";
+  g.lineWidth = 8;
+  g.beginPath();
+  g.arc(256, 150, 68, 0.2, Math.PI * 1.9);
+  g.stroke();
+  g.fillStyle = "#f4b443";
+  g.font = "700 36px 'Barlow Condensed', 'Arial Narrow', sans-serif";
+  g.textAlign = "center";
+  g.textBaseline = "middle";
+  g.fillText("BOOST / BUILD / REPEAT", 256, 272);
+  g.fillStyle = "#d8e0e5";
+  g.font = "600 19px 'Barlow', Arial, sans-serif";
+  g.fillText("AUTOMECH PERFORMANCE LAB", 256, 322);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+
 function pegboardTexture() {
   const c = document.createElement("canvas");
   c.width = 1024;
@@ -333,11 +375,80 @@ function Cabinet({ position, rotation = 0 }: { position: [number, number, number
   );
 }
 
+function OilDrum({ position }: { position: [number, number, number] }) {
+  return (
+    <group position={position}>
+      <mesh position-y={0.46} castShadow receiveShadow>
+        <cylinderGeometry args={[0.38, 0.38, 0.9, 28]} />
+        <meshStandardMaterial color="#a44b25" metalness={0.35} roughness={0.56} />
+      </mesh>
+      {[0.2, 0.72].map((y) => (
+        <mesh key={y} position-y={y}>
+          <torusGeometry args={[0.385, 0.025, 8, 32]} />
+          <meshStandardMaterial color="#d5d0c4" metalness={0.75} roughness={0.32} />
+        </mesh>
+      ))}
+      <mesh position-y={0.92}>
+        <cylinderGeometry args={[0.36, 0.36, 0.025, 28]} />
+        <meshStandardMaterial color="#6e3722" metalness={0.5} roughness={0.45} />
+      </mesh>
+      <mesh position={[0, 0.49, 0.386]}>
+        <planeGeometry args={[0.42, 0.24]} />
+        <meshBasicMaterial color="#e9a52d" />
+      </mesh>
+    </group>
+  );
+}
+
+function ToolCart({ position }: { position: [number, number, number] }) {
+  return (
+    <group position={position}>
+      {[-0.38, 0.38].flatMap((x) => [-0.22, 0.22].map((z) => (
+        <mesh key={`${x}-${z}`} position={[x, 0.09, z]} rotation-x={Math.PI / 2}>
+          <cylinderGeometry args={[0.075, 0.075, 0.06, 14]} />
+          <meshStandardMaterial color="#17191c" roughness={0.9} />
+        </mesh>
+      )))}
+      <mesh position-y={0.52} castShadow receiveShadow>
+        <boxGeometry args={[0.96, 0.78, 0.58]} />
+        <meshStandardMaterial color="#b3422d" metalness={0.28} roughness={0.5} />
+      </mesh>
+      {[0.34, 0.56, 0.78].map((y) => (
+        <group key={y} position={[0, y, 0.3]}>
+          <mesh>
+            <boxGeometry args={[0.82, 0.16, 0.025]} />
+            <meshStandardMaterial color="#33383e" metalness={0.5} roughness={0.4} />
+          </mesh>
+          <mesh position-y={0.01} position-z={0.02}>
+            <boxGeometry args={[0.16, 0.025, 0.025]} />
+            <meshStandardMaterial color="#d0a14a" metalness={0.65} roughness={0.35} />
+          </mesh>
+        </group>
+      ))}
+      <mesh position={[0, 0.96, 0]} castShadow>
+        <boxGeometry args={[1.06, 0.08, 0.66]} />
+        <meshStandardMaterial color="#262a2e" metalness={0.65} roughness={0.34} />
+      </mesh>
+      {[-0.42, 0.42].map((x) => (
+        <mesh key={x} position={[x, 1.1, -0.22]}>
+          <cylinderGeometry args={[0.025, 0.025, 0.3, 10]} />
+          <meshStandardMaterial color="#8b9094" metalness={0.8} roughness={0.3} />
+        </mesh>
+      ))}
+      <mesh position={[0, 1.24, -0.22]}>
+        <boxGeometry args={[0.88, 0.04, 0.04]} />
+        <meshStandardMaterial color="#8b9094" metalness={0.8} roughness={0.3} />
+      </mesh>
+    </group>
+  );
+}
+
 export function Workshop({ reflect = 0 }: { reflect?: number }) {
   const floor = useMemo(concreteTexture, []);
   const rough = useMemo(floorRoughness, []);
   const wall = useMemo(panelTexture, []);
   const sign = useMemo(signTexture, []);
+  const poster = useMemo(posterTexture, []);
   const peg = useMemo(pegboardTexture, []);
   const door = useMemo(doorTexture, []);
   return (
@@ -414,6 +525,18 @@ export function Workshop({ reflect = 0 }: { reflect?: number }) {
         <planeGeometry args={[5.2, 0.975]} />
         <meshStandardMaterial map={sign} emissiveMap={sign} emissive="#ffffff" emissiveIntensity={1.4} roughness={0.6} toneMapped={false} />
       </mesh>
+      {[-6.2, 8.25].map((x) => (
+        <group key={x} position={[x, 3.25, -6.86]}>
+          <mesh position-z={-0.03}>
+            <boxGeometry args={[2.2, 1.72, 0.08]} />
+            <meshStandardMaterial color="#252a30" metalness={0.65} roughness={0.4} />
+          </mesh>
+          <mesh position-z={0.02}>
+            <planeGeometry args={[2.04, 1.56]} />
+            <meshStandardMaterial map={poster} roughness={0.85} />
+          </mesh>
+        </group>
+      ))}
       <mesh position={[-2.6, 2.1, -6.88]}>
         <planeGeometry args={[2.8, 1.4]} />
         <meshStandardMaterial map={peg} roughness={0.7} metalness={0.2} />
@@ -439,6 +562,9 @@ export function Workshop({ reflect = 0 }: { reflect?: number }) {
       <Cabinet position={[-3.4, 0, -6.4]} />
       <Cabinet position={[-1.8, 0, -6.4]} />
       <Cabinet position={[-7.4, 0, -3]} rotation={Math.PI / 2} />
+      <OilDrum position={[-6.6, 0, -4.7]} />
+      <OilDrum position={[-5.7, 0, -4.7]} />
+      <ToolCart position={[6.9, 0, 1.6]} />
       <DynoRollers />
     </group>
   );
