@@ -333,10 +333,10 @@ export function RaceScreen({ cfg }: { cfg: RaceConfig }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [runKey, cfg.eventId, cfg.rivalId, cfg.distance]);
 
-  // Escape quits; Enter rematches from the results card.
+  // Q quits (portals reserve Esc for leaving fullscreen); Enter rematches from the results card.
   useEffect(() => {
     const k = (e: KeyboardEvent) => {
-      if (e.code === "Escape") exitRace();
+      if (e.code === "KeyQ") exitRace();
       if (e.code === "Enter" && result) setRunKey((x) => x + 1);
     };
     window.addEventListener("keydown", k);
@@ -437,7 +437,7 @@ export function RaceScreen({ cfg }: { cfg: RaceConfig }) {
                 <div><kbd className="text-foreground">W / ↑</kbd> gas (hold)</div>
                 <div><kbd className="text-foreground">Space / →</kbd> launch · shift up</div>
                 <div><kbd className="text-foreground">Shift / ←</kbd> shift down</div>
-                <div><kbd className="text-foreground">Esc</kbd> quit</div>
+                <div><kbd className="text-foreground">Q</kbd> quit</div>
               </div>
             </>
           )}
