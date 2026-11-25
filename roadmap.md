@@ -53,7 +53,7 @@
 
 ## Next (from the development plan)
 - [ ] Additional vehicle chassis and authored visual/audio assets
-- [ ] Aerodynamics model and wind tunnel
+- [x] Aerodynamics model and wind tunnel: shared drag/downforce loads from fitted bodywork, speed-squared wind-tunnel chart, factory-drag comparison, metric/US display
 - [ ] Additional research progression
 
 ## Rivals round (Nov 2026)

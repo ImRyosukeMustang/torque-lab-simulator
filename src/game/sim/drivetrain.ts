@@ -85,6 +85,28 @@ export function bodyworkSpec(build: Build) {
   };
 }
 
+export interface AeroLoads {
+  dragN: number;
+  downforceN: number;
+  frontDownforceN: number;
+  rearDownforceN: number;
+}
+
+/** Aerodynamic forces at a road speed, using the same bodywork model as vehicle simulation. */
+export function aeroLoads(build: Build, speedKmh: number): AeroLoads {
+  const body = bodyworkSpec(build);
+  const speedMs = Math.max(0, speedKmh) / 3.6;
+  const dynamicPressure = 0.5 * VEHICLE.airDensity * speedMs * speedMs;
+  const downforceN = dynamicPressure * body.downforceArea;
+  const frontDownforceN = downforceN * body.downforceFront;
+  return {
+    dragN: dynamicPressure * body.dragCdA,
+    downforceN,
+    frontDownforceN,
+    rearDownforceN: downforceN - frontDownforceN,
+  };
+}
+
 export function drivetrainSpec(build: Build, tune: Tune): DrivetrainSpec {
   const box = getPart("gearbox", build.gearbox);
   const clutch = getPart("clutch", build.clutch);

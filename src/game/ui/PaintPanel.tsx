@@ -1,5 +1,6 @@
 import { Check, RotateCcw } from "lucide-react";
 import type { ReactNode } from "react";
+import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
@@ -15,8 +16,10 @@ import {
   type RimStyle,
   type StripeStyle,
 } from "../sim/cosmetics";
-import { BODY_SLOTS, getPart, SLOT_LABEL } from "../sim/parts";
+import { aeroLoads, bodyworkSpec } from "../sim/drivetrain";
+import { BODY_SLOTS, getPart, SLOT_LABEL, STOCK_BUILD } from "../sim/parts";
 import { useGame } from "../store";
+import { KMH_PER_MPH, speedUnit } from "../units";
 import { ChevronRight } from "lucide-react";
 
 function Section({ title, value, children }: { title: string; value?: string; children: ReactNode }) {
@@ -89,6 +92,27 @@ export function PaintPanel() {
   const setView = useGame((s) => s.setView);
   const build = useGame((s) => s.game.build);
   const selectSlot = useGame((s) => s.selectSlot);
+  const units = useGame((s) => s.settings.units);
+  const forceFactor = units === "imperial" ? 0.2248089431 : 1;
+  const forceUnit = units === "imperial" ? "lbf" : "N";
+  const speedMarks = units === "imperial" ? [0, 30, 60, 90, 120, 150, 180] : [0, 50, 100, 150, 200, 250, 300];
+  const referenceSpeed = units === "imperial" ? 120 : 200;
+  const referenceKmh = units === "imperial" ? referenceSpeed * KMH_PER_MPH : referenceSpeed;
+  const bodywork = bodyworkSpec(build);
+  const stockBodywork = bodyworkSpec(STOCK_BUILD);
+  const referenceLoads = aeroLoads(build, referenceKmh);
+  const windRows = speedMarks.map((speed) => {
+    const speedKmh = units === "imperial" ? speed * KMH_PER_MPH : speed;
+    const fittedLoads = aeroLoads(build, speedKmh);
+    const factoryLoads = aeroLoads(STOCK_BUILD, speedKmh);
+    return {
+      speed,
+      drag: fittedLoads.dragN * forceFactor,
+      downforce: fittedLoads.downforceN * forceFactor,
+      stockDrag: factoryLoads.dragN * forceFactor,
+    };
+  });
+  const displayForce = (newtons: number) => (newtons * forceFactor).toLocaleString("en-US", { maximumFractionDigits: 0 });
 
   return (
     <div className="space-y-3 p-4">
@@ -117,6 +141,45 @@ export function PaintPanel() {
               </span>
             </button>
           ))}
+        </div>
+      </Section>
+
+      <Section title="Wind tunnel" value={`${(bodywork.dragCdA * (units === "imperial" ? 10.7639104 : 1)).toFixed(2)} ${units === "imperial" ? "ft²" : "m²"} CdA`}>
+        <p className="text-[11px] leading-relaxed text-muted-foreground">
+          Aero forces rise with speed squared. Downforce adds tyre load; drag increases road load. Dashed line is factory drag.
+        </p>
+        <div className="h-44" role="img" aria-label={`Wind tunnel chart showing drag and downforce in ${forceUnit} across road speed`}>
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={windRows} margin={{ top: 6, right: 8, bottom: 0, left: -12 }}>
+              <CartesianGrid stroke="var(--border)" strokeDasharray="2 4" />
+              <XAxis dataKey="speed" type="number" domain={[0, "dataMax"]} tick={{ stroke: "var(--muted-foreground)", fontSize: 10 }} tickCount={7} unit="" />
+              <YAxis tick={{ stroke: "var(--muted-foreground)", fontSize: 10 }} tickFormatter={(value: number) => `${Math.round(value)} ${forceUnit}`} />
+              <Tooltip
+                contentStyle={{ background: "var(--popover)", border: "1px solid var(--border)", borderRadius: 6, fontSize: 11 }}
+                labelFormatter={(value) => `${value} ${speedUnit(units)}`}
+                formatter={(value: number, name: string) => [`${Math.round(value)} ${forceUnit}`, name]}
+              />
+              <Line dataKey="drag" name="Drag" stroke="var(--destructive)" strokeWidth={2} dot={false} isAnimationActive={false} />
+              <Line dataKey="stockDrag" name="Factory drag" stroke="var(--muted-foreground)" strokeDasharray="5 4" strokeWidth={1.5} dot={false} isAnimationActive={false} />
+              <Line dataKey="downforce" name="Downforce" stroke="var(--chart-1)" strokeWidth={2} dot={false} isAnimationActive={false} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+          <div className="rounded border border-border bg-background/40 px-2.5 py-2">
+            <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Drag @ {referenceSpeed} {speedUnit(units)}</div>
+            <div className="font-mono text-sm tabular">{displayForce(referenceLoads.dragN)} {forceUnit}</div>
+            <div className="text-[10px] text-muted-foreground">Factory: {displayForce(aeroLoads(STOCK_BUILD, referenceKmh).dragN)} {forceUnit}</div>
+          </div>
+          <div className="rounded border border-border bg-background/40 px-2.5 py-2">
+            <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Downforce @ {referenceSpeed} {speedUnit(units)}</div>
+            <div className="font-mono text-sm tabular">{displayForce(referenceLoads.downforceN)} {forceUnit}</div>
+            <div className="text-[10px] text-muted-foreground">Front balance: {bodywork.downforceArea ? `${Math.round(bodywork.downforceFront * 100)}%` : "—"}</div>
+          </div>
+          <div className="col-span-2 rounded border border-border bg-background/40 px-2.5 py-2 sm:col-span-1">
+            <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Factory CdA</div>
+            <div className="font-mono text-sm tabular">{(stockBodywork.dragCdA * (units === "imperial" ? 10.7639104 : 1)).toFixed(2)} {units === "imperial" ? "ft²" : "m²"}</div>
+          </div>
         </div>
       </Section>
 

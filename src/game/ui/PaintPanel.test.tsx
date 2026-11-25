@@ -41,4 +41,13 @@ describe("Paint Shop", () => {
       tint: 0.8,
     });
   });
+
+  it("shows a wind-tunnel readout for the fitted bodywork", () => {
+    useGame.getState().setSettings({ units: "metric" });
+    render(<PaintPanel />);
+
+    expect(screen.getByText("Wind tunnel")).toBeTruthy();
+    expect(screen.getByText("Drag @ 200 km/h")).toBeTruthy();
+    expect(screen.getByText("Downforce @ 200 km/h")).toBeTruthy();
+  });
 });
