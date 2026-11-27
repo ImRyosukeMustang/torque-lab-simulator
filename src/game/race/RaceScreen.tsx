@@ -30,6 +30,7 @@ import {
   type ShiftQuality,
 } from "../sim/race";
 import { soundProfile } from "../soundProfile";
+import { trackRaceFinished, trackRaceStarted } from "../telemetry";
 import { useGame, type RaceConfig } from "../store";
 import { AdButton } from "../ui/AdButton";
 import { fmtCredits } from "../ui/format";
@@ -132,6 +133,7 @@ export function RaceScreen({ cfg }: { cfg: RaceConfig }) {
     let acc = 0;
     const platform = getGamePlatform();
     const clock = createActiveClock(platform);
+    trackRaceStarted(cfg);
     let last = clock.now();
     let lastHud = 0;
     let lastLimiter = false;
@@ -170,6 +172,13 @@ export function RaceScreen({ cfg }: { cfg: RaceConfig }) {
       const playerTotal = foul || dnf ? null : s.finishT;
       const rivalTotal = ghost.totalS;
       const won = !foul && !dnf && playerTotal !== null && (rivalTotal === null || playerTotal < rivalTotal);
+      trackRaceFinished({
+        config: cfg,
+        won,
+        foul,
+        dnf,
+        activeSeconds: clock.now() / 1000,
+      });
       const out = useGame.getState().finishRace(cfg, { won, totalS: playerTotal, foul });
       if (won) {
         raceSound.win();

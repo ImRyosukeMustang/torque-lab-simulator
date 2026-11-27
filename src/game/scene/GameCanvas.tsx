@@ -49,7 +49,7 @@ export const QUALITY = {
   low: { maxDpr: 1, shadowMap: 512, env: 64, contact: false, post: false, ao: false, smaa: false, reflect: 0, decorations: false },
 };
 
-export function GameCanvas() {
+export function GameCanvas({ onSceneReady }: { onSceneReady?: () => void } = {}) {
   const wrap = useRef<HTMLDivElement>(null);
   const quality = useGame((s) => s.settings.quality);
   // The drag strip covers the scene: stop rendering it to give the race every frame.
@@ -123,7 +123,12 @@ export function GameCanvas() {
             {q.smaa ? <SMAA /> : <></>}
           </EffectComposer>
         )}
-        <ReadySignal onReady={() => wrap.current?.setAttribute("data-scene-ready", "true")} />
+        <ReadySignal
+          onReady={() => {
+            wrap.current?.setAttribute("data-scene-ready", "true");
+            onSceneReady?.();
+          }}
+        />
       </Canvas>
     </div>
   );

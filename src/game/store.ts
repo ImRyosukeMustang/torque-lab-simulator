@@ -25,6 +25,7 @@ import { findPart } from "./sim/parts";
 import { uiSound } from "./uiSound";
 import { raceSound } from "./raceSound";
 import { getGamePlatform } from "./platform";
+import { trackTutorialAbandoned } from "./telemetry";
 import type { RaceDistance } from "./sim/race";
 import type { Units } from "./units";
 import type { Cosmetics } from "./sim/cosmetics";
@@ -289,6 +290,7 @@ export const useGame = create<Store>((set, get) => {
     },
     watchAdReward: () => get().grantCredits(AD_REWARD),
     skipTutorial: () => {
+      trackTutorialAbandoned(get().game, "skipped");
       commit(finishTutorial(get().game));
     },
   };
