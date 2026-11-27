@@ -134,7 +134,7 @@ export function WorkshopPanel() {
                   )}
                   {researchProject && (
                     <span className="mt-2 inline-flex rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-primary">
-                      Research · {researchProject.name}
+                      Blueprint unlocked · {researchProject.name}
                     </span>
                   )}
                 </div>

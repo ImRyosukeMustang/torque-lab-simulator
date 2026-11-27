@@ -4,6 +4,7 @@ import type { Build, TransmissionType } from './sim/types';
 /** Levels/depths are normalized 0..1; frequencies are Hz and times seconds. */
 export interface SoundProfile {
   firingFrequencyFactor: number;
+  engineScale: number;
   intakeLevel: number; /** Induction honk amplitude. */
   intakeHz: number; /** Idle induction band centre, Hz. */
   lopeDepth: number; /** Irregular cam-speed amplitude/pitch modulation. */
@@ -53,6 +54,7 @@ export function soundProfile(build: Build): SoundProfile {
   const forced = turbo.maximumFlow > 0;
   return {
     firingFrequencyFactor: engine.cylinders / 4,
+    engineScale: unit(engine.displacementL / 4),
     intakeLevel: unit(intake.flowCapacity * 1.8), intakeHz: 150 + intake.flowCapacity * 380,
     lopeDepth: unit(0.025 + (cam.durationDeg - 228) / 80 + (cam.peakRpm - 4800) / 18000),
     brightness: unit(0.2 + (cam.peakRpm - 4000) / 5000),

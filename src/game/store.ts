@@ -50,13 +50,15 @@ export interface Settings {
   units: Units;
   /** Shift automatically at the ideal point in races. */
   autoShift: boolean;
+  /** Skip the pre-race controls guide on future races. */
+  raceControlsHintDismissed: boolean;
 }
 export type CameraView = "exterior" | "bay" | "dyno" | "paint" | SlotId;
 
 const SAVE_KEY = "automech.save.v1";
 const SETTINGS_KEY = "automech.settings.v1";
 // Medium by default: Chromebooks and integrated GPUs are a large share of web players.
-const DEFAULT_SETTINGS: Settings = { quality: "medium", sound: true, volume: 0.7, uiSound: true, units: defaultUnits(), autoShift: false };
+const DEFAULT_SETTINGS: Settings = { quality: "medium", sound: true, volume: 0.7, uiSound: true, units: defaultUnits(), autoShift: false, raceControlsHintDismissed: false };
 
 /** US, Liberia and Myanmar browsers default to imperial; everyone else metric. */
 function defaultUnits(): Units {
@@ -79,6 +81,7 @@ function loadSettings(): Settings {
       uiSound: typeof raw.uiSound === "boolean" ? raw.uiSound : DEFAULT_SETTINGS.uiSound,
       units: raw.units === "imperial" || raw.units === "metric" ? raw.units : DEFAULT_SETTINGS.units,
       autoShift: typeof raw.autoShift === "boolean" ? raw.autoShift : DEFAULT_SETTINGS.autoShift,
+      raceControlsHintDismissed: typeof raw.raceControlsHintDismissed === "boolean" ? raw.raceControlsHintDismissed : DEFAULT_SETTINGS.raceControlsHintDismissed,
     };
   } catch {
     return DEFAULT_SETTINGS;

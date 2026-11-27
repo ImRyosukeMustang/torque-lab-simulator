@@ -1,6 +1,7 @@
-import { ArrowBigDown, ArrowBigUp, Flag, Footprints, RotateCcw, Trophy, X } from "lucide-react";
+import { ArrowBigDown, ArrowBigUp, Flag, Footprints, Play, RotateCcw, Trophy, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { engineAudio } from "../audio";
 import { createActiveClock, getGamePlatform } from "../platform";
@@ -68,7 +69,7 @@ interface ResultInfo {
 
 const GAS_KEYS = new Set(["ArrowUp", "KeyW"]);
 const UP_KEYS = new Set(["Space", "ArrowRight", "KeyE"]);
-const DOWN_KEYS = new Set(["ShiftLeft", "ShiftRight", "ArrowLeft", "KeyQ"]);
+const DOWN_KEYS = new Set(["ShiftLeft", "ShiftRight", "ArrowLeft"]);
 const OFF: TreeState = { prestage: false, stage: false, ambers: 0, green: false, red: false };
 const fmtS = (v: number | null) => (v === null ? "—" : `${v.toFixed(3)} s`);
 
@@ -87,6 +88,8 @@ export function RaceScreen({ cfg }: { cfg: RaceConfig }) {
   const startRace = useGame((s) => s.startRace);
   const grantCredits = useGame((s) => s.grantCredits);
   const units = useGame((s) => s.settings.units);
+  const controlsHintDismissed = useGame((s) => s.settings.raceControlsHintDismissed);
+  const setSettings = useGame((s) => s.setSettings);
   const canvas = useRef<HTMLCanvasElement>(null);
   const input = useRef({ gas: false, up: 0, down: 0 });
   const [runKey, setRunKey] = useState(0);
@@ -94,11 +97,14 @@ export function RaceScreen({ cfg }: { cfg: RaceConfig }) {
   const [result, setResult] = useState<ResultInfo | null>(null);
   const [doubled, setDoubled] = useState(false);
   const [gasDown, setGasDown] = useState(false);
+  const [raceStarted, setRaceStarted] = useState(controlsHintDismissed);
+  const [showControls, setShowControls] = useState(!controlsHintDismissed);
   const rival = RIVALS.find((r) => r.id === cfg.rivalId)!;
   const event = cfg.eventId ? RACE_EVENTS.find((e) => e.id === cfg.eventId) ?? null : null;
   const carInfo = useRef<{ revLimit: number; shiftRpm: number[]; launchWindow: [number, number] } | null>(null);
 
   useEffect(() => {
+    if (!raceStarted) return;
     const el = canvas.current;
     if (!el) return;
     const ctx = el.getContext("2d");
@@ -271,7 +277,7 @@ export function RaceScreen({ cfg }: { cfg: RaceConfig }) {
       // Sound
       if (!ended) {
         const boost = sampleCurve(sim.curve, s.rpm).boostBar * thr * (s.launched ? 1 : 0.35);
-        engineAudio.update(s.rpm, s.launched ? thr : thr * 0.5, boost);
+        engineAudio.update(s.rpm, s.launched ? thr : thr * 0.5, boost, s.v * 3.6);
         raceSound.screech(s.spin);
       }
       if (s.t > msgUntil) msg = null;
@@ -340,7 +346,7 @@ export function RaceScreen({ cfg }: { cfg: RaceConfig }) {
       raceSound.stopAll();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [runKey, cfg.eventId, cfg.rivalId, cfg.distance]);
+  }, [runKey, cfg.eventId, cfg.rivalId, cfg.distance, raceStarted]);
 
   // Q quits (portals reserve Esc for leaving fullscreen); Enter rematches from the results card.
   useEffect(() => {
@@ -370,6 +376,68 @@ export function RaceScreen({ cfg }: { cfg: RaceConfig }) {
   return (
     <div className="absolute inset-0 z-40 overflow-hidden bg-viewport" data-sound="none">
       <canvas ref={canvas} className="absolute inset-0 h-full w-full" aria-label="Drag strip, side view" />
+      {showControls && (
+        <div className="absolute inset-0 z-30 flex items-center justify-center overflow-y-auto bg-background/80 p-4 backdrop-blur-md sm:p-8">
+          <section className="w-full max-w-3xl space-y-5 rounded-2xl border border-primary/40 bg-card p-5 shadow-2xl sm:p-8">
+            <header className="text-center">
+              <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">Before the start</p>
+              <h2 className="mt-1 font-display text-3xl font-bold sm:text-5xl">Race controls</h2>
+              <p className="mt-2 text-sm text-muted-foreground">The countdown begins after you press Ready.</p>
+            </header>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="flex min-h-28 items-center gap-4 rounded-xl border border-border bg-background/60 p-4">
+                <Footprints className="h-10 w-10 shrink-0 text-primary" />
+                <div>
+                  <h3 className="font-display text-xl font-bold">GAS — press and hold</h3>
+                  <p className="text-sm text-muted-foreground">Hold the on-screen GAS pedal, or hold <kbd className="rounded border px-1.5 py-0.5 font-mono text-foreground">W</kbd> / <kbd className="rounded border px-1.5 py-0.5 font-mono text-foreground">↑</kbd>, to build revs.</p>
+                </div>
+              </div>
+              <div className="flex min-h-28 items-center gap-4 rounded-xl border border-border bg-background/60 p-4">
+                <ArrowBigUp className="h-10 w-10 shrink-0 text-primary" />
+                <div>
+                  <h3 className="font-display text-xl font-bold">LAUNCH / SHIFT UP</h3>
+                  <p className="text-sm text-muted-foreground">Press on green to launch; press again to upshift. Use the on-screen button, <kbd className="rounded border px-1.5 py-0.5 font-mono text-foreground">Space</kbd> or <kbd className="rounded border px-1.5 py-0.5 font-mono text-foreground">→</kbd>.</p>
+                </div>
+              </div>
+              <div className="flex min-h-28 items-center gap-4 rounded-xl border border-border bg-background/60 p-4">
+                <ArrowBigDown className="h-10 w-10 shrink-0 text-primary" />
+                <div>
+                  <h3 className="font-display text-xl font-bold">SHIFT DOWN</h3>
+                  <p className="text-sm text-muted-foreground">Use the on-screen Down button, <kbd className="rounded border px-1.5 py-0.5 font-mono text-foreground">Shift</kbd> or <kbd className="rounded border px-1.5 py-0.5 font-mono text-foreground">←</kbd>.</p>
+                </div>
+              </div>
+              <div className="flex min-h-28 items-center gap-4 rounded-xl border border-border bg-background/60 p-4">
+                <X className="h-10 w-10 shrink-0 text-muted-foreground" />
+                <div>
+                  <h3 className="font-display text-xl font-bold">QUIT</h3>
+                  <p className="text-sm text-muted-foreground">Press <kbd className="rounded border px-1.5 py-0.5 font-mono text-foreground">Q</kbd> or the Quit button to return to the garage.</p>
+                </div>
+              </div>
+            </div>
+            <div className="flex flex-col-reverse items-center justify-between gap-4 sm:flex-row">
+              <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                <Switch
+                  checked={controlsHintDismissed}
+                  onCheckedChange={(checked) => setSettings({ raceControlsHintDismissed: checked })}
+                  aria-label="Never show this guide again"
+                />
+                <span>Never show this guide again</span>
+              </div>
+              <Button
+                size="lg"
+                variant="race"
+                className="h-14 w-full px-10 text-xl sm:w-auto"
+                onClick={() => {
+                  setShowControls(false);
+                  setRaceStarted(true);
+                }}
+              >
+                <Play /> Ready — start race
+              </Button>
+            </div>
+          </section>
+        </div>
+      )}
       {hud && (
         <>
           <div className="pointer-events-none absolute left-3 top-3">

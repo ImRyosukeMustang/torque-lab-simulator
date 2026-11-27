@@ -120,7 +120,7 @@ export function visiblePartsForSlot(state: GameState, slot: SlotId) {
   return partsForSlot(slot).filter((part) => {
     if (part.unlockAfter && !state.progress[part.unlockAfter]) return false;
     const project = researchProjectForPart(part.id);
-    return !project || Boolean(state.progress[project.requiredChallenge]);
+    return !project || state.researched.includes(project.id);
   });
 }
 

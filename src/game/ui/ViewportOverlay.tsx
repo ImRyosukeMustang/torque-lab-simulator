@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { engineAudio } from "../audio";
 import { describeSound, soundProfile } from "../soundProfile";
 import { cn } from "@/lib/utils";
-import { SLOT_LABEL, SLOT_ORDER } from "../sim/parts";
+import { SLOT_LABEL } from "../sim/parts";
 import { useGame } from "../store";
 
 export function ViewportOverlay() {
@@ -12,7 +12,6 @@ export function ViewportOverlay() {
   const hovered = useGame((s) => s.hoveredSlot);
   const setView = useGame((s) => s.setView);
   const setHood = useGame((s) => s.setHoodOpen);
-  const selectSlot = useGame((s) => s.selectSlot);
   const build = useGame((s) => s.game.build);
   const settings = useGame((s) => s.settings);
   const dynoRunning = useGame((s) => s.dynoRunning);
@@ -70,20 +69,7 @@ export function ViewportOverlay() {
           </div>
         )}
       </div>
-      <div className="flex items-end justify-between gap-2">
-        <div className="flex max-w-[min(74vw,850px)] shrink-0 gap-1.5 overflow-x-auto whitespace-nowrap pb-1">
-          {SLOT_ORDER.map((s) => (
-            <button
-              key={s}
-              className={cn(chip(view === s), "shrink-0")}
-              onClick={() => selectSlot(s)}
-              title={`Focus ${SLOT_LABEL[s]} and open its upgrade options`}
-              aria-pressed={view === s}
-            >
-              {SLOT_LABEL[s]}
-            </button>
-          ))}
-        </div>
+      <div className="flex items-end justify-end gap-2">
         <div className="flex items-center gap-1.5 rounded-md bg-background/60 px-2 py-1 font-mono text-[10px] text-muted-foreground backdrop-blur">
           <MousePointer2 className="h-3 w-3" /> Drag rotate · Right-drag pan · Scroll zoom
         </div>

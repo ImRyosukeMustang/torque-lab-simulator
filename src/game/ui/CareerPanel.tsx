@@ -1,4 +1,4 @@
-import { Check, ChevronDown, Lock, Medal, X, Send, Paintbrush } from "lucide-react";
+import { Check, ChevronDown, CircleHelp, Lock, Medal, X, Send, Paintbrush } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,8 @@ import {
   type Grade,
 } from "../sim/challenges";
 import { configKey, researchProjectBlock } from "../sim/economy";
-import { findPart } from "../sim/parts";
+import { findPart, getPart, SLOT_LABEL, SLOT_ORDER, STOCK_BUILD } from "../sim/parts";
+import { SOLUTIONS } from "../sim/challengeSolutions";
 import { RESEARCH_PROJECTS } from "../sim/research";
 import { useGame } from "../store";
 import { fmtCredits } from "./format";
@@ -33,6 +34,7 @@ export function CareerPanel() {
   const firstOpen = CHALLENGES.find((c) => !game.progress[c.id]) ?? CHALLENGES[0];
   const [openId, setOpenId] = useState(firstOpen?.id ?? "c1");
   const [openChapter, setOpenChapter] = useState<number | null>(firstOpen?.chapter ?? 1);
+  const [helpOpenId, setHelpOpenId] = useState<string | null>(null);
   const medals = (["gold", "silver", "bronze"] as Grade[]).map(
     (g) => [g, Object.values(game.progress).filter((x) => x === g).length] as const,
   );
@@ -172,6 +174,7 @@ export function CareerPanel() {
                     : null;
                 const styleChecks = ev?.styleChecks ?? [];
                 const stylePaid = game.styleBonusPaid.includes(ch.id);
+                const solution = SOLUTIONS[ch.id]!;
                 return (
                   <div
                     key={ch.id}
@@ -214,6 +217,62 @@ export function CareerPanel() {
                     {open && (
                       <div className="space-y-3 border-t border-border p-3">
                         <p className="text-sm leading-relaxed">{ch.brief}</p>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setHelpOpenId(helpOpenId === ch.id ? null : ch.id)}
+                          aria-expanded={helpOpenId === ch.id}
+                        >
+                          <CircleHelp /> {helpOpenId === ch.id ? "Hide pass guide" : "Exact pass guide"}
+                        </Button>
+                        {helpOpenId === ch.id && (
+                          <section className="space-y-3 rounded-md border border-primary/35 bg-primary/5 p-3">
+                            <div>
+                              <h3 className="font-display text-lg font-semibold">Verified build and tune</h3>
+                              <p className="text-xs leading-relaxed text-muted-foreground">
+                                This exact setup passes the contract in the game's solution tests. Other builds can pass too; parts marked stock stay as they are.
+                              </p>
+                            </div>
+                            <ol className="list-inside list-decimal space-y-1 text-xs text-muted-foreground">
+                              <li>Fit the listed components in the Workshop; keep stock components unchanged.</li>
+                              <li>Set the calibration values and gear ratios below.</li>
+                              <li>Run the Dyno (or complete a track test) with this build and tune.</li>
+                              <li>Return here and submit the measured run for grading.</li>
+                            </ol>
+                            <div>
+                              <h4 className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Complete component list</h4>
+                              <ul className="grid gap-x-4 gap-y-1 sm:grid-cols-2">
+                                {SLOT_ORDER.map((slot) => {
+                                  const partId = solution.build[slot] ?? STOCK_BUILD[slot];
+                                  const part = getPart(slot, partId);
+                                  const isStock = partId === STOCK_BUILD[slot];
+                                  return (
+                                    <li key={slot} className="flex items-baseline justify-between gap-2 text-xs">
+                                      <span className="text-muted-foreground">{SLOT_LABEL[slot]}</span>
+                                      <span className="text-right font-medium">
+                                        {part.name}
+                                        <span className="ml-1 font-mono text-[10px] text-muted-foreground">
+                                          {isStock ? "· stock" : `· ${fmtCredits(part.price)}`}
+                                        </span>
+                                      </span>
+                                    </li>
+                                  );
+                                })}
+                              </ul>
+                            </div>
+                            <div className="rounded border border-border bg-background/60 p-2.5">
+                              <h4 className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Exact tune settings</h4>
+                              <dl className="grid grid-cols-2 gap-x-4 gap-y-1 font-mono text-xs tabular sm:grid-cols-3">
+                                <div><dt className="text-muted-foreground">Boost</dt><dd>{solution.tune.boostTarget.toFixed(2)} bar</dd></div>
+                                <div><dt className="text-muted-foreground">Lambda</dt><dd>{solution.tune.lambdaTarget.toFixed(2)} λ</dd></div>
+                                <div><dt className="text-muted-foreground">Timing</dt><dd>{solution.tune.timingOffset}°</dd></div>
+                                <div><dt className="text-muted-foreground">Rev limit</dt><dd>{solution.tune.revLimit.toLocaleString("en-US")} rpm</dd></div>
+                                <div><dt className="text-muted-foreground">Final drive</dt><dd>{solution.tune.finalDrive.toFixed(2)}</dd></div>
+                                <div className="col-span-2 sm:col-span-1"><dt className="text-muted-foreground">Gear ratios</dt><dd>{solution.tune.gearRatios.map((ratio) => ratio.toFixed(2)).join(" · ")}</dd></div>
+                              </dl>
+                            </div>
+                          </section>
+                        )}
                         <div>
                           <div className="mb-1.5 flex items-center justify-between text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
                             <span>Requirements</span>

@@ -8,6 +8,7 @@ interface Voice {
   intake: GainNode; intakeFilter: BiquadFilterNode; rasp: GainNode;
   whistle: OscillatorNode; whistleGain: GainNode; gear: OscillatorNode; gearGain: GainNode;
   raspGate: GainNode; firing: OscillatorNode; tick: GainNode; tickOsc: OscillatorNode; fan: GainNode; fanFilter: BiquadFilterNode;
+  wind: GainNode; windFilter: BiquadFilterNode; tyres: GainNode; tyreFilter: BiquadFilterNode;
   sources: Set<Source>; nodes: AudioNode[]; stopping: boolean; cutUntil: number;
 }
 const clamp = (v: number, lo = 0, hi = 1) => Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : lo;
@@ -52,22 +53,27 @@ class EngineAudio {
     const intake = gain(0), intakeFilter = filter('bandpass', opts.profile.intakeHz);
     const rasp = gain(0), raspFilter = filter('bandpass', 3200);
     const fan = gain(0), fanFilter = filter('bandpass', opts.profile.fanHz);
+    const wind = gain(0), windFilter = filter('lowpass', 900);
+    const tyres = gain(0), tyreFilter = filter('bandpass', 900);
     const noise = ctx.createBufferSource(); noise.buffer = getNoiseBuffer(); noise.loop = true; sources.add(noise);
     noise.connect(intakeFilter).connect(intake).connect(torque);
     noise.connect(raspFilter).connect(rasp).connect(torque);
     noise.connect(fanFilter).connect(fan).connect(out); noise.start();
+    noise.connect(windFilter).connect(wind).connect(out);
+    noise.connect(tyreFilter).connect(tyres).connect(out);
     // Audio-rate firing gate for rasp and injector/piston ticks, without per-frame source creation.
     const gate = gain(0); gate.connect(rasp.gain); const firing = osc('sine', (850 / 30) * opts.profile.firingFrequencyFactor, gate);
     const whistleGain = gain(0); whistleGain.connect(torque); const whistle = osc('sine', 3000, whistleGain);
     const gearGain = gain(0); gearGain.connect(torque); const gear = osc('sine', 200, gearGain);
     const tick = gain(0); tick.connect(torque); const tickOsc = osc('square', (850 / 30) * opts.profile.firingFrequencyFactor, tick);
     this.voice = { ctx, profile: opts.profile, out, torque, engine, filter: low, harmonics, intake, intakeFilter, rasp,
-      whistle, whistleGain, gear, gearGain, raspGate: gate, firing, tick, tickOsc, fan, fanFilter, sources, nodes, stopping: false, cutUntil: 0 };
+      whistle, whistleGain, gear, gearGain, raspGate: gate, firing, tick, tickOsc, fan, fanFilter,
+      wind, windFilter, tyres, tyreFilter, sources, nodes, stopping: false, cutUntil: 0 };
     this.update(850, 0.08, 0);
   }
-  update(rpm: number, load: number, boost: number): void {
+  update(rpm: number, load: number, boost: number, speedKmh = 0): void {
     const v = this.voice; if (!v || v.stopping) return;
-    rpm = clamp(rpm, 150, 14000); load = clamp(load); boost = clamp(boost, 0, 5);
+    rpm = clamp(rpm, 150, 14000); load = clamp(load); boost = clamp(boost, 0, 5); speedKmh = clamp(speedKmh, 0, 400);
     this.lastRpm = rpm; this.lastBoost = boost;
     const p = v.profile, t = v.ctx.currentTime;
     const depth = p.lopeDepth * clamp((3500 - rpm) / 2600);
@@ -78,11 +84,11 @@ class EngineAudio {
     v.harmonics.forEach((o, i) =>
       target(o.frequency, firingHz * firingHarmonics[i]!.order * (1 + depth * lope * 0.035), t),
     );
-    target(v.engine.gain, (0.28 + load * 0.36) * p.exhaustLevel * (1 + depth * lope * 0.7), t);
+    target(v.engine.gain, (0.28 + load * 0.36) * p.exhaustLevel * (0.75 + p.engineScale * 0.5) * (1 + depth * lope * 0.7), t);
     target(v.filter.frequency, (380 + rpm * (0.18 + p.brightness * 0.24) + load * 700) * (1 - p.turboMuffling), t);
     target(v.intakeFilter.frequency, p.intakeHz + rpm * 0.018, t);
     target(v.intake.gain, p.intakeLevel * (0.012 + load * 0.13) + p.pipeWhoosh * load * 0.025, t);
-    target(v.rasp.gain, p.rasp * load * 0.04, t);
+    target(v.rasp.gain, p.rasp * load * (0.035 + p.popSharpness * 0.01), t);
     target(v.raspGate.gain, p.rasp * load * 0.025, t); target(v.firing.frequency, firingHz, t);
     target(v.whistle.frequency, clamp(p.whistleHz * (0.65 + boost * 0.3 + rpm / 18000), 2000, 9000), t, 0.08);
     target(v.whistleGain.gain, p.whistleLevel * boost * 0.055 * (1 + p.flutter * Math.sin(t * 39) * 0.18), t, 0.06);
@@ -90,6 +96,13 @@ class EngineAudio {
     target(v.gearGain.gain, p.gearWhine * (0.015 + load * 0.06) + p.diffChatter * load * 0.008, t);
     target(v.tickOsc.frequency, firingHz, t);
     target(v.tick.gain, (p.injectorTick * 0.013 + p.pistonSlap * 0.018) * clamp((2400 - rpm) / 1500), t);
+    target(v.fanFilter.frequency, p.fanHz + rpm * 0.01, t);
+    target(v.fan.gain, p.fanLevel * (0.006 + load * 0.012), t);
+    const speedMix = clamp(speedKmh / 320);
+    target(v.windFilter.frequency, 450 + speedKmh * 15, t);
+    target(v.wind.gain, p.windNoise * speedMix ** 1.6 * 0.08, t);
+    target(v.tyreFilter.frequency, 700 + speedKmh * 9, t);
+    target(v.tyres.gain, p.tyreRoar * speedMix * (0.006 + load * 0.012), t);
     if (t >= v.cutUntil) target(v.torque.gain, 1, t);
     this.level = this.volume * (0.28 + load * 0.36) * p.exhaustLevel;
   }

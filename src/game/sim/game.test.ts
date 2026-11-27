@@ -81,7 +81,7 @@ describe("economy and saves", () => {
     expect(buyPart(g, "turbo-t35")).toBe(g);
   });
 
-  it("hides contract and research gated parts until the required contract is completed", () => {
+  it("hides contract and research gated parts until their gates are cleared", () => {
     const fresh = newGame();
     expect(visiblePartsForSlot(fresh, "turbo").some((part) => part.id === "turbo-t35")).toBe(false);
     expect(visiblePartsForSlot(fresh, "aero").some((part) => part.id === "aero-gt")).toBe(false);
@@ -91,7 +91,9 @@ describe("economy and saves", () => {
     expect(visiblePartsForSlot(afterC2, "aero").some((part) => part.id === "aero-gt")).toBe(false);
 
     const afterC3 = { ...afterC2, progress: { ...afterC2.progress, c3: "bronze" as const } };
-    expect(visiblePartsForSlot(afterC3, "aero").some((part) => part.id === "aero-gt")).toBe(true);
+    expect(visiblePartsForSlot(afterC3, "aero").some((part) => part.id === "aero-gt")).toBe(false);
+    const researched = { ...afterC3, researched: ["cfd-ground-effects"] };
+    expect(visiblePartsForSlot(researched, "aero").some((part) => part.id === "aero-gt")).toBe(true);
   });
 
   it("selling refunds 60% and never sells the installed part", () => {
