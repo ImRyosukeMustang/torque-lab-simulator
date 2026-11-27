@@ -32,10 +32,10 @@ let lastAdAt = -Infinity;
 
 const TABS: { id: Tab; label: string; icon: typeof Wrench }[] = [
   { id: "workshop", label: "Workshop", icon: Wrench },
+  { id: "race", label: "Drag Strip", icon: Flag },
   { id: "dyno", label: "Dyno Lab", icon: Gauge },
   { id: "drivetrain", label: "Drivetrain", icon: Cog },
   { id: "paint", label: "Paint & Body", icon: Paintbrush },
-  { id: "race", label: "Drag Strip", icon: Flag },
   { id: "career", label: "Career", icon: Trophy },
 ];
 
@@ -71,11 +71,15 @@ export function TopBar() {
             onClick={() => (locked ? toast("Beat your Street Rival first", { description: "Win the first drag race to open the full workshop." }) : setTab(id))}
             disabled={dynoRunning && id !== tab}
             aria-disabled={locked || undefined}
-            data-sound={locked ? "none" : undefined}
+            data-sound="none"
             title={dynoRunning && id !== tab ? "Finish or abort the test run first" : locked ? `${label}: beat your Street Rival first` : label}
             className={cn(
-              "flex items-center gap-2 rounded-md px-3 py-1.5 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40",
-              tab === id ? "bg-accent text-foreground" : "text-muted-foreground hover:text-foreground",
+              "flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40",
+              tab === id
+                ? "border-primary/50 bg-primary/10 text-foreground"
+                : id === "race"
+                  ? "border-primary/25 bg-primary/5 text-primary hover:bg-primary/10"
+                  : "border-transparent text-muted-foreground hover:text-foreground",
             )}
           >
             {locked ? <Lock className="h-4 w-4 opacity-60" /> : <Icon className={cn("h-4 w-4", tab === id && "text-primary", id === "race" && tutorial && "text-primary")} />}
@@ -137,6 +141,12 @@ export function TopBar() {
 
 
 const QUALITY_LABEL: Record<Quality, string> = { ultra: "Ultra", high: "High", medium: "Medium", low: "Low" };
+const QUALITY_HELP: Record<Quality, string> = {
+  ultra: "4096px shadows · full AO and bloom · SMAA · polished floor reflections · up to 2× resolution.",
+  high: "2048px shadows · AO and bloom · soft floor reflections · adaptive resolution.",
+  medium: "1024px shadows and contact shadows · no post-effects · up to 1.5× resolution.",
+  low: "Shadows and post-effects off · 1× resolution · lightest GPU load.",
+};
 const UNITS_LABEL: Record<Units, string> = { metric: "Metric (km/h, Nm, °C)", imperial: "US (mph, lb-ft, °F)" };
 
 function FullscreenButton() {
@@ -234,7 +244,7 @@ function SettingsMenu() {
                 </button>
               ))}
             </div>
-            <p className="text-[11px] leading-snug text-muted-foreground">Ultra adds a mirror-polished floor, contact shadows and full-resolution rendering. High keeps the glow and ambient occlusion. Resolution drops automatically if the frame rate falls. Use Low on older laptops and phones.</p>
+            <p className="text-[11px] leading-snug text-muted-foreground">{QUALITY_HELP[settings.quality]} Resolution adapts to frame rate when possible.</p>
           </div>
         </PopoverContent>
       </Popover>

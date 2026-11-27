@@ -43,10 +43,10 @@ function ReadySignal({ onReady }: { onReady: () => void }) {
 
 /** Per-tier render budget. `reflect` is the floor reflection resolution (0 = matte floor). */
 export const QUALITY = {
-  ultra: { maxDpr: 2, shadowMap: 4096, env: 512, contact: true, post: true, ao: true, smaa: true, reflect: 1024 },
-  high: { maxDpr: 1.75, shadowMap: 2048, env: 256, contact: true, post: true, ao: true, smaa: false, reflect: 512 },
-  medium: { maxDpr: 1.5, shadowMap: 1024, env: 128, contact: true, post: false, ao: false, smaa: false, reflect: 0 },
-  low: { maxDpr: 1, shadowMap: 512, env: 64, contact: false, post: false, ao: false, smaa: false, reflect: 0 },
+  ultra: { maxDpr: 2, shadowMap: 4096, env: 512, contact: true, post: true, ao: true, smaa: true, reflect: 1024, decorations: true },
+  high: { maxDpr: 1.75, shadowMap: 2048, env: 256, contact: true, post: true, ao: true, smaa: false, reflect: 512, decorations: true },
+  medium: { maxDpr: 1.5, shadowMap: 1024, env: 128, contact: true, post: false, ao: false, smaa: false, reflect: 0, decorations: true },
+  low: { maxDpr: 1, shadowMap: 512, env: 64, contact: false, post: false, ao: false, smaa: false, reflect: 0, decorations: false },
 };
 
 export function GameCanvas() {
@@ -108,7 +108,7 @@ export function GameCanvas() {
           ))}
           <Lightformer form="ring" intensity={1.4} color="#ffe8c8" position={[6, 4, 6]} scale={3} />
         </Environment>
-        <Workshop reflect={q.reflect} />
+        <Workshop reflect={q.reflect} decorations={q.decorations} showcase={quality === "ultra"} />
         {q.contact && <ContactShadows position={[0, 0.006, 0]} scale={7} blur={2.4} opacity={0.65} far={1.2} frames={1} />}
         <Coupe>
           <EngineBay />

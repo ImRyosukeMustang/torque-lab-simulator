@@ -443,7 +443,68 @@ function ToolCart({ position }: { position: [number, number, number] }) {
   );
 }
 
-export function Workshop({ reflect = 0 }: { reflect?: number }) {
+function FireExtinguisher() {
+  return (
+    <group position={[-7.55, 0, 0.1]}>
+      <mesh position-y={0.48} castShadow>
+        <cylinderGeometry args={[0.13, 0.15, 0.78, 20]} />
+        <meshStandardMaterial color="#b3221a" metalness={0.25} roughness={0.38} />
+      </mesh>
+      <mesh position-y={0.9}>
+        <boxGeometry args={[0.18, 0.08, 0.16]} />
+        <meshStandardMaterial color="#25282c" metalness={0.55} roughness={0.4} />
+      </mesh>
+      <mesh position={[0.08, 0.84, 0]}>
+        <torusGeometry args={[0.09, 0.012, 8, 16, Math.PI]} />
+        <meshStandardMaterial color="#bfc4c8" metalness={0.8} roughness={0.3} />
+      </mesh>
+      <mesh position={[-0.151, 0.49, 0]}>
+        <boxGeometry args={[0.008, 0.38, 0.055]} />
+        <meshBasicMaterial color="#f0a028" />
+      </mesh>
+    </group>
+  );
+}
+
+function HoseReel() {
+  return (
+    <group position={[-7.72, 1.65, -1.35]}>
+      <mesh rotation-z={Math.PI / 2} castShadow>
+        <cylinderGeometry args={[0.24, 0.24, 0.1, 24]} />
+        <meshStandardMaterial color="#d39a2e" metalness={0.55} roughness={0.4} />
+      </mesh>
+      <mesh rotation-y={Math.PI / 2}>
+        <torusGeometry args={[0.19, 0.025, 8, 28]} />
+        <meshStandardMaterial color="#25282c" roughness={0.8} />
+      </mesh>
+      <mesh position={[0.13, -0.22, 0.06]} rotation-z={-0.7}>
+        <boxGeometry args={[0.035, 0.42, 0.035]} />
+        <meshStandardMaterial color="#282b2f" roughness={0.75} />
+      </mesh>
+    </group>
+  );
+}
+
+function OilBottles() {
+  return (
+    <group position={[-7.2, 1.02, -0.92]}>
+      {[-0.22, 0, 0.22].map((x, i) => (
+        <group key={x} position-x={x}>
+          <mesh position-y={0.11} castShadow>
+            <boxGeometry args={[0.13, 0.22, 0.12]} />
+            <meshStandardMaterial color={i === 1 ? "#b3221a" : "#c58a1c"} roughness={0.5} />
+          </mesh>
+          <mesh position={[0, 0.25, 0]}>
+            <cylinderGeometry args={[0.035, 0.035, 0.06, 10]} />
+            <meshStandardMaterial color="#202226" roughness={0.7} />
+          </mesh>
+        </group>
+      ))}
+    </group>
+  );
+}
+
+export function Workshop({ reflect = 0, decorations = true, showcase = false }: { reflect?: number; decorations?: boolean; showcase?: boolean }) {
   const floor = useMemo(concreteTexture, []);
   const rough = useMemo(floorRoughness, []);
   const wall = useMemo(panelTexture, []);
@@ -566,6 +627,13 @@ export function Workshop({ reflect = 0 }: { reflect?: number }) {
       <OilDrum position={[-5.7, 0, -4.7]} />
       <ToolCart position={[6.9, 0, 1.6]} />
       <DynoRollers />
+      {decorations && (
+        <>
+          <FireExtinguisher />
+          <HoseReel />
+        </>
+      )}
+      {showcase && <OilBottles />}
     </group>
   );
 }

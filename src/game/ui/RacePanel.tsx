@@ -182,7 +182,7 @@ export function RacePanel() {
             const on = freeRival === r.id;
             return (
               <li key={r.id}>
-                <button type="button" aria-pressed={on} onClick={() => setFreeRival(r.id)} className={cn("flex w-full items-center gap-3 rounded-md border px-2.5 py-1.5 text-left", on ? "border-ghost/70 bg-ghost/15" : "border-border hover:border-ghost/40")}>
+                <button type="button" data-sound="select" aria-pressed={on} onClick={() => setFreeRival(r.id)} className={cn("flex w-full items-center gap-3 rounded-md border px-2.5 py-1.5 text-left", on ? "border-ghost/70 bg-ghost/15" : "border-border hover:border-ghost/40")}>
                   <span className={cn("flex h-9 w-9 shrink-0 flex-col items-center justify-center rounded-md border font-mono leading-none", on ? "border-ghost text-ghost" : "border-border text-foreground")}>
                     <span className="text-sm font-semibold tabular">{rating}</span>
                   </span>
@@ -204,7 +204,7 @@ export function RacePanel() {
         </ul>
         <div className="grid grid-cols-3 gap-1.5">
           {DISTANCES.map((d) => (
-            <button key={d} type="button" aria-pressed={freeDist === d} onClick={() => setFreeDist(d)} className={cn("rounded-md border px-2 py-1.5 text-xs font-medium", freeDist === d ? "border-primary/60 bg-primary/15 text-foreground" : "border-border text-muted-foreground hover:text-foreground")}>
+            <button key={d} type="button" data-sound="select" aria-pressed={freeDist === d} onClick={() => setFreeDist(d)} className={cn("rounded-md border px-2 py-1.5 text-xs font-medium", freeDist === d ? "border-primary/60 bg-primary/15 text-foreground" : "border-border text-muted-foreground hover:text-foreground")}>
               {RACE_DISTANCE_LABEL[d]}
             </button>
           ))}

@@ -71,9 +71,15 @@ export function ViewportOverlay() {
         )}
       </div>
       <div className="flex items-end justify-between gap-2">
-        <div className="hidden flex-wrap gap-1.5 md:flex">
+        <div className="flex max-w-[min(74vw,850px)] shrink-0 gap-1.5 overflow-x-auto whitespace-nowrap pb-1">
           {SLOT_ORDER.map((s) => (
-            <button key={s} className={chip(view === s)} onClick={() => selectSlot(s)}>
+            <button
+              key={s}
+              className={cn(chip(view === s), "shrink-0")}
+              onClick={() => selectSlot(s)}
+              title={`Focus ${SLOT_LABEL[s]} and open its upgrade options`}
+              aria-pressed={view === s}
+            >
               {SLOT_LABEL[s]}
             </button>
           ))}

@@ -106,7 +106,7 @@ export function drawRace(
   view: RaceView,
   frame: { t: number; player: CarDraw; rival: CarDraw; distance: number; units: Units; dt: number },
 ) {
-  const S = Math.max(20, Math.min(56, w / 21)); // px per metre: close on the cars, no grandstand
+  const S = Math.max(30, Math.min(80, w / 15)); // Keep both cars large and readable instead of showing a distant grandstand.
   const { player, rival, distance, dt } = frame;
   const camX = player.x - (w * 0.34) / S;
   view.shake = Math.max(0, view.shake - dt * 3);

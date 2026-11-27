@@ -1,9 +1,10 @@
 import { Lock, Check, ShoppingCart, Wrench, ArrowRight } from "lucide-react";
+import { useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { CHALLENGES } from "../sim/challenges";
-import { purchaseBlock, SELL_RATE } from "../sim/economy";
-import { BODY_SLOTS, DRIVETRAIN_SLOTS, ENGINE_SLOTS, getPart, partsForSlot, SLOT_HELP, SLOT_LABEL } from "../sim/parts";
+import { purchaseBlock, SELL_RATE, visiblePartsForSlot } from "../sim/economy";
+import { BODY_SLOTS, DRIVETRAIN_SLOTS, ENGINE_SLOTS, getPart, SLOT_HELP, SLOT_LABEL } from "../sim/parts";
 import { researchProjectForPart } from "../sim/research";
 import { useGame } from "../store";
 import { localizeText } from "../units";
@@ -52,57 +53,90 @@ export function WorkshopPanel() {
   const setTab = useGame((s) => s.setTab);
   const sell = useGame((s) => s.sell);
   const install = useGame((s) => s.install);
+  const optionsRef = useRef<HTMLElement>(null);
+  const previousSelected = useRef(selected);
   const unlockTitle = (id?: string) => CHALLENGES.find((c) => c.id === id);
   const units = useGame((s) => s.settings.units);
+  const groups = [
+    ["Engine", ENGINE_SLOTS],
+    ["Drivetrain", DRIVETRAIN_SLOTS],
+    ["Body & aero", BODY_SLOTS],
+  ] as const;
+
+  useEffect(() => {
+    if (previousSelected.current !== selected) {
+      optionsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      previousSelected.current = selected;
+    }
+  }, [selected]);
 
   return (
-    <div className="space-y-5 p-4">
-      {game.tutorial !== "done" ? <StreetRivalCard /> : <ActiveContract />}
-
-      {([["Engine systems", ENGINE_SLOTS], ["Drivetrain", DRIVETRAIN_SLOTS], ["Bodywork & aero", BODY_SLOTS]] as const).map(([title, slots]) => (
-        <section key={title}>
-          <h2 className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{title}</h2>
-          <div className="grid grid-cols-1 gap-1">
+    <div className="space-y-4 p-4">
+      <section className="space-y-2 rounded-xl border border-border bg-card/70 p-3">
+        <h2 className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Select a system</h2>
+        {groups.map(([title, slots]) => (
+          <div key={title} className="space-y-1">
+            <h3 className="text-[9px] font-semibold uppercase tracking-[0.16em] text-muted-foreground/75">{title}</h3>
+            <div className="flex flex-wrap gap-1">
             {slots.map((slot) => {
               const part = getPart(slot, game.build[slot]);
               const active = slot === selected;
               return (
                 <button
                   key={slot}
+                  type="button"
                   onClick={() => selectSlot(slot)}
                   onMouseEnter={() => setHovered(slot)}
                   onMouseLeave={() => setHovered(null)}
+                  data-sound="select"
+                  title={`${SLOT_LABEL[slot]} · ${part.name}`}
+                  aria-pressed={active}
                   className={cn(
-                    "flex items-center justify-between rounded-md border px-3 py-2 text-left transition-colors",
-                    active ? "border-primary/60 bg-accent" : "border-transparent hover:bg-muted",
+                    "rounded-md border px-2.5 py-1.5 text-left text-[11px] font-medium transition-colors",
+                    active
+                      ? "border-primary/60 bg-primary/10 text-foreground"
+                      : "border-border/70 bg-background/50 text-muted-foreground hover:border-primary/40 hover:text-foreground",
                   )}
                 >
-                  <span className="text-sm font-medium">{SLOT_LABEL[slot]}</span>
-                  <span className={cn("truncate pl-3 text-xs", part.price === 0 ? "text-muted-foreground" : "text-primary")}>{part.name}</span>
+                  {SLOT_LABEL[slot]}
                 </button>
               );
             })}
+            </div>
           </div>
-        </section>
-      ))}
+        ))}
+      </section>
 
-      <section className="space-y-3">
+      <section ref={optionsRef} className="scroll-mt-2 space-y-3">
         <div>
-          <h3 className="font-display text-xl font-semibold">{SLOT_LABEL[selected]}</h3>
-          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{SLOT_HELP[selected]}</p>
+          <div className="flex items-center gap-2">
+            <span className="h-5 w-1 rounded-full bg-primary" />
+            <h2 className="font-display text-2xl font-semibold leading-none">{SLOT_LABEL[selected]}</h2>
+          </div>
+          <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{SLOT_HELP[selected]}</p>
         </div>
-        {partsForSlot(selected).map((p) => {
+        {visiblePartsForSlot(game, selected).map((p) => {
           const installed = game.build[selected] === p.id;
           const block = purchaseBlock(game, p.id);
           const owned = block === "owned";
           const unlock = unlockTitle(p.unlockAfter);
           const researchProject = researchProjectForPart(p.id);
           return (
-            <div key={p.id} className={cn("rounded-md border bg-card p-3", installed ? "border-primary/60" : "border-border")}>
+            <article key={p.id} className={cn("rounded-xl border bg-gradient-to-br from-card to-card/70 p-3 shadow-sm", installed ? "border-primary/60 ring-1 ring-primary/15" : "border-border")}>
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <div className="font-semibold leading-tight">{p.name}</div>
+                  <div className="font-display text-base font-semibold leading-tight">{p.name}</div>
                   <p className="mt-0.5 text-xs text-muted-foreground">{p.description}</p>
+                  {unlock && (
+                    <span className="mt-2 inline-flex rounded-full border border-success/30 bg-success/10 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-success">
+                      Contract unlock · {unlock.title}
+                    </span>
+                  )}
+                  {researchProject && (
+                    <span className="mt-2 inline-flex rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-primary">
+                      Research · {researchProject.name}
+                    </span>
+                  )}
                 </div>
                 <span className="shrink-0 font-mono text-xs tabular text-muted-foreground">{p.price ? fmtCredits(p.price) : "Stock"}</span>
               </div>
@@ -144,7 +178,7 @@ export function WorkshopPanel() {
                   </Button>
                 )}
               </div>
-            </div>
+            </article>
           );
         })}
         {selected === "ecu" && (
@@ -154,6 +188,8 @@ export function WorkshopPanel() {
           </div>
         )}
       </section>
+
+      {game.tutorial !== "done" ? <StreetRivalCard /> : <ActiveContract />}
     </div>
   );
 }

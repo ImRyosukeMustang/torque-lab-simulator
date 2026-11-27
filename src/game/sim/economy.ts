@@ -4,9 +4,9 @@ import { CHALLENGES, evaluateChallenge, isChallengeUnlocked, rewardFor, type Eva
 import { isRaceUnlocked, purseFor, RACE_EVENTS } from "./race";
 import { simulate } from "./engine";
 import { DEFAULT_COSMETICS, type Cosmetics } from "./cosmetics";
-import { clampTune, findPart, getPart, PARTS, SLOT_ORDER, STOCK_BUILD, STOCK_TUNE } from "./parts";
+import { clampTune, findPart, getPart, PARTS, partsForSlot, SLOT_ORDER, STOCK_BUILD, STOCK_TUNE } from "./parts";
 import { RESEARCH_PROJECTS, researchProjectForPart } from "./research";
-import type { Build, Tune } from "./types";
+import type { Build, SlotId, Tune } from "./types";
 
 export const STARTING_CREDITS = 3000;
 export const SELL_RATE = 0.6;
@@ -114,6 +114,15 @@ export function configKey(build: Build, tune: Tune): string {
 }
 
 export type PurchaseBlock = "owned" | "locked" | "research" | "credits" | null;
+
+/** Parts stay out of the workshop catalogue until their career or research gate is cleared. */
+export function visiblePartsForSlot(state: GameState, slot: SlotId) {
+  return partsForSlot(slot).filter((part) => {
+    if (part.unlockAfter && !state.progress[part.unlockAfter]) return false;
+    const project = researchProjectForPart(part.id);
+    return !project || Boolean(state.progress[project.requiredChallenge]);
+  });
+}
 
 export function purchaseBlock(state: GameState, partId: string): PurchaseBlock {
   const part = findPart(partId);

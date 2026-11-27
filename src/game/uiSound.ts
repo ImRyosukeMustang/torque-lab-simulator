@@ -63,6 +63,7 @@ export const uiSound = {
     play([hit(0, 2200, 0.035, 0.08)]);
   },
   tab(): void { play([hit(0, 1100, 0.055, 0.075)]); },
+  select(): void { play([hit(0, 1180, 0.035, 0.065, false, 1180), hit(0.045, 1760, 0.045, 0.055, false, 1760)]); },
   toggle(on: boolean): void { play([hit(0, on ? 1700 : 1000, 0.06, 0.075, false)]); },
   buy(): void { chime([880, 1320]); },
   sell(): void { chime([1100, 730]); },
@@ -94,7 +95,8 @@ export function installGlobalClickSound(root?: Document): () => void {
       if (!target || target.closest('[data-sound="none"], [disabled], [aria-disabled="true"], [inert]')) return;
       const control = target.closest('button, [role="button"], [role="tab"], [role="switch"], [role="slider"]');
       if (!control || control.matches(':disabled') || control.closest('[data-sound="none"], [aria-disabled="true"], [inert]')) return;
-      uiSound.click();
+      if (control.getAttribute("data-sound") === "select") uiSound.select();
+      else uiSound.click();
     };
     entry = { refs: 0, listener }; roots.set(doc, entry); doc.addEventListener('pointerdown', listener, true);
   }

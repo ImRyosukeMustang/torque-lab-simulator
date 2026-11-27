@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { CHALLENGES, evaluateChallenge, GRADE_RANK, rewardFor } from "./challenges";
 import { simulate } from "./engine";
-import { buyPart, configKey, deserialize, SAVE_VERSION, installPart, newGame, purchaseBlock, recordDynoRun, researchProjectBlock, sellPart, serialize, setCosmetics, setTune, startResearch, STARTING_CREDITS, submitChallenge, type GameState } from "./economy";
+import { buyPart, configKey, deserialize, SAVE_VERSION, installPart, newGame, purchaseBlock, recordDynoRun, researchProjectBlock, sellPart, serialize, setCosmetics, setTune, startResearch, STARTING_CREDITS, submitChallenge, visiblePartsForSlot, type GameState } from "./economy";
 import { clampTune, findPart, getPart, STOCK_BUILD, STOCK_TUNE } from "./parts";
 import { RESEARCH_PROJECTS } from "./research";
 import type { Build, Tune } from "./types";
@@ -79,6 +79,19 @@ describe("economy and saves", () => {
   it("locked parts cannot be bought", () => {
     const g = newGame();
     expect(buyPart(g, "turbo-t35")).toBe(g);
+  });
+
+  it("hides contract and research gated parts until the required contract is completed", () => {
+    const fresh = newGame();
+    expect(visiblePartsForSlot(fresh, "turbo").some((part) => part.id === "turbo-t35")).toBe(false);
+    expect(visiblePartsForSlot(fresh, "aero").some((part) => part.id === "aero-gt")).toBe(false);
+
+    const afterC2 = { ...fresh, progress: { c2: "bronze" as const } };
+    expect(visiblePartsForSlot(afterC2, "turbo").some((part) => part.id === "turbo-t35")).toBe(true);
+    expect(visiblePartsForSlot(afterC2, "aero").some((part) => part.id === "aero-gt")).toBe(false);
+
+    const afterC3 = { ...afterC2, progress: { ...afterC2.progress, c3: "bronze" as const } };
+    expect(visiblePartsForSlot(afterC3, "aero").some((part) => part.id === "aero-gt")).toBe(true);
   });
 
   it("selling refunds 60% and never sells the installed part", () => {
