@@ -150,6 +150,18 @@ describe("economy and saves", () => {
     expect(migrated.cosmetics.underglowColor).toBe("#38bdf8");
   });
 
+  it("defaults the new engine slot when migrating a version 7 save", () => {
+    const v7 = JSON.parse(serialize(newGame()));
+    v7.version = 7;
+    delete v7.build.engine;
+    v7.owned = v7.owned.filter((id: string) => !id.startsWith("engine-"));
+
+    const migrated = deserialize(JSON.stringify(v7));
+    expect(migrated.version).toBe(SAVE_VERSION);
+    expect(migrated.build.engine).toBe(STOCK_BUILD.engine);
+    expect(migrated.owned).toContain(STOCK_BUILD.engine);
+  });
+
   it("a contract already graded can be re-submitted even if an earlier one was inserted later", () => {
     // c12 was added before c2 after some players had graded c2: they must still be able to improve c2.
     const sol = SOLUTIONS["c2"]!;

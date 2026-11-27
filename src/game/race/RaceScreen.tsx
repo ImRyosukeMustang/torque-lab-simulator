@@ -73,10 +73,12 @@ const OFF: TreeState = { prestage: false, stage: false, ambers: 0, green: false,
 const fmtS = (v: number | null) => (v === null ? "—" : `${v.toFixed(3)} s`);
 
 function kitOf(build: Record<string, string>): Kit {
+  const body = getPart("body", build["body"] ?? "body-stock");
   return {
     aero: getPart("aero", build["aero"] ?? "aero-stock").style,
     wing: getPart("wing", build["wing"] ?? "wing-ducktail").style,
-    body: getPart("body", build["body"] ?? "body-stock").style,
+    body: body.style,
+    shape: body.shape,
   };
 }
 

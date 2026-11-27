@@ -1,7 +1,7 @@
 // Deterministic engine model. Pure functions only: the same build + tune always
 // yields the same curves. Rendering, dyno UI and challenge grading all read this.
 import { drivetrainEfficiency, simulateVehicle } from "./drivetrain";
-import { buildCost, clampTune, ENGINE, getPart } from "./parts";
+import { buildCost, clampTune, getPart } from "./parts";
 import type { Build, CurvePoint, Diagnostic, SimResult, Tune } from "./types";
 
 export const AMBIENT = { pressureBar: 1.013, tempK: 298 };
@@ -109,6 +109,7 @@ interface PointState {
 }
 
 function simulatePoint(build: Build, tune: Tune, rpm: number): PointState {
+  const engine = getPart("engine", build.engine);
   const intake = getPart("intake", build.intake);
   const turbo = getPart("turbo", build.turbo);
   const ic = getPart("intercooler", build.intercooler);
@@ -119,8 +120,8 @@ function simulatePoint(build: Build, tune: Tune, rpm: number): PointState {
   const cooling = getPart("cooling", build.cooling);
   const hasTurbo = turbo.maximumFlow > 0;
 
-  const vd = ENGINE.displacementL / 1000; // m^3
-  const cycleRate = rpm / 120; // intake events per second for the whole engine (4-stroke)
+  const vd = engine.displacementL / 1000; // m^3
+  const cycleRate = rpm / 120; // 4-stroke cycles per second per cylinder
   const veCam = camVE(build, rpm);
   const rhoAmb = (AMBIENT.pressureBar * 1e5) / (R_AIR * AMBIENT.tempK);
   const lambdaT = tune.lambdaTarget;
@@ -181,7 +182,7 @@ function simulatePoint(build: Build, tune: Tune, rpm: number): PointState {
   const boostActual = Math.max(0, map - AMBIENT.pressureBar);
 
   // Fuel delivery: injectors are flow-limited, so lambda can go lean of the target.
-  const injCapKgS = (inj.flowCc * ENGINE.cylinders * FUEL_DENSITY) / 60 / 1000;
+  const injCapKgS = (inj.flowCc * engine.cylinders * FUEL_DENSITY) / 60 / 1000;
   const fuelReq = mdot * fuelAirTarget;
   let duty = fuelReq / injCapKgS;
   let fuel = fuelReq;
@@ -251,6 +252,7 @@ const round = (v: number, d = 1) => Math.round(v * 10 ** d) / 10 ** d;
 
 export function simulate(build: Build, rawTune: Tune): SimResult {
   const tune = clampTune(build, rawTune);
+  const engine = getPart("engine", build.engine);
   const cam = getPart("camshaft", build.camshaft);
   const turbo = getPart("turbo", build.turbo);
   const internals = getPart("internals", build.internals);
@@ -408,7 +410,7 @@ export function simulate(build: Build, rawTune: Tune): SimResult {
   // Injector duty
   if (maxDuty > LIMITS.dutyWarn) {
     hit((maxDuty - LIMITS.dutyWarn) * 100);
-    const needCc = (pDuty.airFlowKgS / (tune.lambdaTarget * fuelP.stoichAfr)) * 1000 * 60 / FUEL_DENSITY / ENGINE.cylinders / 0.8;
+    const needCc = (pDuty.airFlowKgS / (tune.lambdaTarget * fuelP.stoichAfr)) * 1000 * 60 / FUEL_DENSITY / engine.cylinders / 0.8;
     diagnostics.push({
       code: "INJ_DUTY",
       severity: maxDuty >= MAX_DUTY ? "critical" : "warning",

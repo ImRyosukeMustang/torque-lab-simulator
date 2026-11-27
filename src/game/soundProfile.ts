@@ -3,6 +3,7 @@ import type { Build, TransmissionType } from './sim/types';
 
 /** Levels/depths are normalized 0..1; frequencies are Hz and times seconds. */
 export interface SoundProfile {
+  firingFrequencyFactor: number;
   intakeLevel: number; /** Induction honk amplitude. */
   intakeHz: number; /** Idle induction band centre, Hz. */
   lopeDepth: number; /** Irregular cam-speed amplitude/pitch modulation. */
@@ -40,6 +41,7 @@ export interface SoundProfile {
 }
 const unit = (n: number) => Math.max(0, Math.min(1, n));
 export function soundProfile(build: Build): SoundProfile {
+  const engine = getPart('engine', build.engine);
   const intake = getPart('intake', build.intake), cam = getPart('camshaft', build.camshaft);
   const turbo = getPart('turbo', build.turbo), ic = getPart('intercooler', build.intercooler);
   const inj = getPart('injectors', build.injectors), fuel = getPart('fuel', build.fuel);
@@ -50,6 +52,7 @@ export function soundProfile(build: Build): SoundProfile {
   const aero = getPart('aero', build.aero), wing = getPart('wing', build.wing), body = getPart('body', build.body);
   const forced = turbo.maximumFlow > 0;
   return {
+    firingFrequencyFactor: engine.cylinders / 4,
     intakeLevel: unit(intake.flowCapacity * 1.8), intakeHz: 150 + intake.flowCapacity * 380,
     lopeDepth: unit(0.025 + (cam.durationDeg - 228) / 80 + (cam.peakRpm - 4800) / 18000),
     brightness: unit(0.2 + (cam.peakRpm - 4000) / 5000),

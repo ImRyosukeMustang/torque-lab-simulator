@@ -107,7 +107,7 @@ export function WorkshopPanel() {
                 <span className="shrink-0 font-mono text-xs tabular text-muted-foreground">{p.price ? fmtCredits(p.price) : "Stock"}</span>
               </div>
               <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1">
-                {partSpecs(p).map(([k, v]) => (
+                {partSpecs(p, getPart("engine", game.build.engine).cylinders).map(([k, v]) => (
                   <div key={k} className="flex justify-between gap-2 text-[11px]">
                     <dt className="text-muted-foreground">{k}</dt>
                     <dd className="font-mono tabular">{localizeText(v, units)}</dd>

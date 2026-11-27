@@ -20,6 +20,13 @@ describe("engine simulation", () => {
     expect(r.buildCost).toBe(0);
   });
 
+  it.each(["engine-i5-25", "engine-v6-32", "engine-v8-40"])("%s raises output and adds engine mass", (engine) => {
+    const stock = simulate(STOCK_BUILD, STOCK_TUNE);
+    const swapped = simulate(B({ engine }), STOCK_TUNE);
+    expect(swapped.peakPowerHp).toBeGreaterThan(stock.peakPowerHp);
+    expect(swapped.vehicle.massKg).toBeGreaterThan(stock.vehicle.massKg);
+  });
+
   it("a freer intake adds power on an NA engine", () => {
     expect(simulate(B({ intake: "intake-cai" }), STOCK_TUNE).peakPowerHp).toBeGreaterThan(simulate(STOCK_BUILD, STOCK_TUNE).peakPowerHp);
   });
@@ -202,6 +209,16 @@ describe("engine simulation", () => {
     expect(v.zeroTo100S!).toBeLessThan(10);
     expect(v.topSpeedKmh).toBeGreaterThan(200);
     expect(v.topSpeedKmh).toBeLessThan(240);
+  });
+
+  it("body-shape swaps change race mass and acceleration", () => {
+    const stock = simulate(STOCK_BUILD, STOCK_TUNE).vehicle;
+    const hatch = simulate(B({ body: "body-hatch" }), STOCK_TUNE).vehicle;
+    const sedan = simulate(B({ body: "body-sedan" }), STOCK_TUNE).vehicle;
+    expect(hatch.massKg).toBeLessThan(stock.massKg);
+    expect(sedan.massKg).toBeGreaterThan(stock.massKg);
+    expect(hatch.zeroTo100S).not.toBe(stock.zeroTo100S);
+    expect(sedan.topSpeedKmh).not.toBe(stock.topSpeedKmh);
   });
 
   it("torque over the clutch's capacity slips it: less wheel power and lower reliability", () => {

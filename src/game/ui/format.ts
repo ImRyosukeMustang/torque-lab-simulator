@@ -3,8 +3,17 @@ import type { Part } from "../sim/types";
 export const fmtCredits = (n: number) => `${Math.round(n).toLocaleString("en-US")} cr`;
 
 /** Engineering specs shown for a part (no predicted horsepower: the dyno reveals that). */
-export function partSpecs(p: Part): [string, string][] {
+export function partSpecs(p: Part, engineCylinders = 4): [string, string][] {
   switch (p.slot) {
+    case "engine":
+      return [
+        ["Layout", p.layout],
+        ["Displacement", `${p.displacementL.toFixed(1)} L`],
+        ["Cylinders", `${p.cylinders}`],
+        ["Bore × stroke", `${p.boreMm} × ${p.strokeMm} mm`],
+        ["Idle", `${p.idleRpm} rpm`],
+        ["Weight change", p.massDeltaKg ? `${p.massDeltaKg > 0 ? "+" : ""}${p.massDeltaKg} kg` : "Factory"],
+      ];
     case "intake":
       return [["Flow capacity", `${Math.round(p.flowCapacity * 1000)} g/s`]];
     case "camshaft":
@@ -34,7 +43,7 @@ export function partSpecs(p: Part): [string, string][] {
     case "injectors":
       return [
         ["Flow", `${p.flowCc} cc/min`],
-        ["Total", `${(p.flowCc * 4 * 0.745 / 60).toFixed(1)} g/s`],
+        ["Total", `${(p.flowCc * engineCylinders * 0.745 / 60).toFixed(1)} g/s (${engineCylinders} cylinders)`],
       ];
     case "fuel":
       return [
@@ -101,9 +110,12 @@ export function partSpecs(p: Part): [string, string][] {
       const rows: [string, string][] = [
         ["Drag area", p.dragAreaDelta === 0 ? "Factory" : `${p.dragAreaDelta > 0 ? "+" : ""}${p.dragAreaDelta.toFixed(3)} m²`],
         ["Downforce @ 200 km/h", p.downforceArea > 0 ? `${Math.round(0.5 * 1.2 * (200 / 3.6) ** 2 * p.downforceArea / 9.81)} kg` : "—"],
-        ["Weight", p.massKg ? `+${p.massKg} kg` : "—"],
+        ["Weight", p.massKg ? `${p.massKg > 0 ? "+" : ""}${p.massKg} kg` : "—"],
       ];
-      if (p.slot === "body") rows.push(["Tyre grip", p.gripBonus ? `+${Math.round((p.gripBonus / 1.05) * 100)}%` : "Factory"]);
+      if (p.slot === "body") {
+        rows.unshift(["Shape", { coupe: "Coupe", sedan: "Sedan", hatchback: "Hatchback" }[p.shape]]);
+        rows.push(["Tyre grip", p.gripBonus ? `+${Math.round((p.gripBonus / 1.05) * 100)}%` : "Factory"]);
+      }
       return rows;
     }
   }

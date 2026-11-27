@@ -32,6 +32,7 @@ const clamp = (at: number): Hit[] => [hit(at, 2800, 0.04, 0.11), hit(at + 0.08, 
 /** Short material-specific arrangements, not random cosmetic variation. */
 function installation(slot: SlotId): Hit[] {
   switch (slot) {
+    case 'engine': return [...ratchet(0, 6), hit(0.3, 150, 0.28, 0.24), hit(0.32, 520, 0.22, 0.14, false)];
     case 'intake': return [hit(0, 2400, 0.04), hit(0.1, 2100, 0.04), ...clamp(0.22)];
     case 'camshaft': return [...ratchet(0), hit(0.32, 1100, 0.18, 0.19, false)];
     case 'turbo': return [...ratchet(0, 6), hit(0.33, 420, 0.22, 0.24), hit(0.34, 870, 0.2, 0.1, false)];

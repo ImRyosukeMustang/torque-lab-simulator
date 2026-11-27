@@ -1,7 +1,7 @@
 // Pure data types for the AUTOMECH simulation. No React, no three.js.
 
 export type SlotId =
-  | "intake" | "camshaft" | "turbo" | "intercooler" | "injectors" | "fuel" | "exhaust" | "internals" | "cooling" | "ecu"
+  | "engine" | "intake" | "camshaft" | "turbo" | "intercooler" | "injectors" | "fuel" | "exhaust" | "internals" | "cooling" | "ecu"
   | "gearbox" | "clutch" | "differential" | "drivetrain"
   | "aero" | "wing" | "body";
 
@@ -25,6 +25,10 @@ export interface IntakePart extends PartBase {
   slot: "intake";
   /** Air mass flow (kg/s) at which the intake costs ~50% of its pressure. */
   flowCapacity: number;
+}
+
+export interface EnginePart extends PartBase, EngineSpec {
+  slot: "engine";
 }
 
 export interface CamshaftPart extends PartBase {
@@ -211,12 +215,14 @@ export interface WingPart extends BodyworkBase {
 export interface BodyPart extends BodyworkBase {
   slot: "body";
   style: "stock" | "overfender" | "widebody";
+  shape: "coupe" | "sedan" | "hatchback";
   tyreWidthMm: number;
   /** Extra half-track width (m) the wider arches allow. */
   trackDelta: number;
 }
 
 export type Part =
+  | EnginePart
   | IntakePart
   | CamshaftPart
   | TurboPart
@@ -236,6 +242,7 @@ export type Part =
   | BodyPart;
 
 export interface PartBySlot {
+  engine: EnginePart;
   intake: IntakePart;
   camshaft: CamshaftPart;
   turbo: TurboPart;

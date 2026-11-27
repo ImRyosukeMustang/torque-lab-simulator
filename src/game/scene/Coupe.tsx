@@ -5,6 +5,7 @@ import { dynoLive } from "../dynoLive";
 import type { Cosmetics, PaintFinish, RimStyle } from "../sim/cosmetics";
 import { bodyworkSpec } from "../sim/drivetrain";
 import { getPart } from "../sim/parts";
+import type { BodyPart } from "../sim/types";
 import { useGame } from "../store";
 import { sculptBody } from "./bodySculpt";
 import { SCENE_COLORS as C, WHEEL } from "./layout";
@@ -88,8 +89,27 @@ function hoodShape() {
   return s;
 }
 
-function greenhouseShape() {
+function greenhouseShape(shape: BodyPart["shape"]) {
   const s = new THREE.Shape();
+  if (shape === "hatchback") {
+    s.moveTo(0.52, 0.96);
+    s.quadraticCurveTo(0.22, 1.2, -0.08, 1.29);
+    s.quadraticCurveTo(-0.58, 1.36, -1.08, 1.31);
+    s.quadraticCurveTo(-1.58, 1.27, -1.92, 1.12);
+    s.lineTo(-2.1, 0.99);
+    s.lineTo(-2.1, 0.95);
+    s.lineTo(0.52, 0.95);
+    return s;
+  }
+  if (shape === "sedan") {
+    s.moveTo(0.52, 0.96);
+    s.quadraticCurveTo(0.22, 1.2, -0.08, 1.29);
+    s.quadraticCurveTo(-0.52, 1.33, -0.94, 1.29);
+    s.quadraticCurveTo(-1.16, 1.21, -1.3, 1.04);
+    s.lineTo(-1.32, 0.95);
+    s.lineTo(0.52, 0.95);
+    return s;
+  }
   s.moveTo(0.52, 0.96);
   s.quadraticCurveTo(0.22, 1.2, -0.08, 1.29);
   s.quadraticCurveTo(-0.52, 1.33, -0.98, 1.29);
@@ -99,8 +119,23 @@ function greenhouseShape() {
   return s;
 }
 
-function roofShape() {
+function roofShape(shape: BodyPart["shape"]) {
   const s = new THREE.Shape();
+  if (shape === "hatchback") {
+    s.moveTo(-0.02, 1.352);
+    s.quadraticCurveTo(-0.62, 1.405, -1.16, 1.36);
+    s.quadraticCurveTo(-1.62, 1.32, -1.98, 1.16);
+    s.lineTo(-1.99, 1.13);
+    s.quadraticCurveTo(-1.4, 1.28, -0.02, 1.327);
+    return s;
+  }
+  if (shape === "sedan") {
+    s.moveTo(-0.02, 1.352);
+    s.quadraticCurveTo(-0.48, 1.395, -0.98, 1.35);
+    s.lineTo(-0.98, 1.325);
+    s.quadraticCurveTo(-0.48, 1.37, -0.02, 1.327);
+    return s;
+  }
   s.moveTo(-0.02, 1.352);
   s.quadraticCurveTo(-0.52, 1.395, -1.02, 1.35);
   s.lineTo(-1.02, 1.325);
@@ -472,7 +507,7 @@ function FenderFlares({ style, paint, trackDelta }: { style: "stock" | "overfend
   );
 }
 
-function BodyDetails() {
+function BodyDetails({ shape }: { shape: BodyPart["shape"] }) {
   const plateRear = useMemo(() => plateTexture("AM 20 X"), []);
   const plateFront = useMemo(() => plateTexture("AUTOMECH"), []);
   useEffect(
@@ -494,6 +529,11 @@ function BodyDetails() {
           <mesh position={[-0.66, 0.62, 0.9218]} material={seam}>
             <planeGeometry args={[0.006, 0.64]} />
           </mesh>
+          {shape === "sedan" && (
+            <mesh position={[-1.15, 0.62, 0.9218]} material={seam}>
+              <planeGeometry args={[0.006, 0.64]} />
+            </mesh>
+          )}
           {/* door handle */}
           <mesh position={[-0.48, 0.84, 0.93]}>
             <boxGeometry args={[0.14, 0.025, 0.02]} />
@@ -555,11 +595,12 @@ export function Coupe({ children }: { children?: React.ReactNode }) {
       nose: extrude(upperNoseShape(), 1.22, 0.03),
       valance: extrude(valanceShape(), 1.22, 0.03),
       hood: extrude(hoodShape(), 1.24, 0.012, 0, HINGE),
-      glass: extrude(greenhouseShape(), 1.34, 0.06),
-      roof: extrude(roofShape(), 1.16, 0.03),
+      glass: extrude(greenhouseShape(bodyPart.shape), 1.34, 0.06),
+      roof: extrude(roofShape(bodyPart.shape), 1.16, 0.03),
     }),
-    [],
+    [bodyPart.shape],
   );
+  useEffect(() => () => Object.values(geo).forEach((geometry) => geometry.dispose()), [geo]);
   const flakes = useMemo(flakeTexture, []);
   const underglow = useMemo(underglowTexture, []);
   useEffect(() => () => underglow.dispose(), [underglow]);
@@ -578,7 +619,7 @@ export function Coupe({ children }: { children?: React.ReactNode }) {
       lanes: stripeLanes(look.stripe),
       build: (w: number, z: number) => ({
         nose: extrude(upperNoseShape(), w, 0.03, z),
-        roof: extrude(roofShape(), w, 0.03, z),
+        roof: extrude(roofShape(bodyPart.shape), w, 0.03, z),
         deck: (() => {
           const g = extrude(deckShape(), w, 0.05, z);
           g.translate(0, 0.002, 0);
@@ -586,7 +627,7 @@ export function Coupe({ children }: { children?: React.ReactNode }) {
         })(),
       }),
     }),
-    [look.stripe],
+    [look.stripe, bodyPart.shape],
   );
   const stripeMat = useStripeMaterial(look.stripeColor);
   const hoodStripes = useMemo(() => stripeGeo.lanes.map(([w, z]) => extrude(hoodShape(), w, 0.012, z, HINGE)), [stripeGeo]);
@@ -637,7 +678,7 @@ export function Coupe({ children }: { children?: React.ReactNode }) {
       <mesh geometry={geo.glass} material={glassMat} castShadow />
       {stripeGeo.lanes.length > 0 && <Stripes look={look} hoodGeo={stripeGeo} />}
       {look.stripe === "side" && <SideFlash color={look.stripeColor} />}
-      <BodyDetails />
+      <BodyDetails shape={bodyPart.shape} />
       {/* hood, hinged at the cowl */}
       <group ref={hood} position={[0.66, 0.98, 0]}>
         <mesh geometry={geo.hood} material={paint} castShadow />

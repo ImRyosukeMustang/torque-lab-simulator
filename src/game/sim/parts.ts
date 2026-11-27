@@ -1,21 +1,12 @@
-import type { Build, EngineSpec, Part, PartBySlot, SlotId, Tune } from "./types";
+import type { Build, EnginePart, Part, PartBySlot, SlotId, Tune } from "./types";
 
-export const ENGINE: EngineSpec = {
-  name: "AM-20 Inline-4",
-  layout: "Inline-4, DOHC 16v",
-  displacementL: 2.0,
-  cylinders: 4,
-  boreMm: 86,
-  strokeMm: 86,
-  idleRpm: 850,
-};
-
-export const ENGINE_SLOTS: SlotId[] = ["intake", "camshaft", "turbo", "intercooler", "injectors", "fuel", "exhaust", "internals", "cooling", "ecu"];
+export const ENGINE_SLOTS: SlotId[] = ["engine", "intake", "camshaft", "turbo", "intercooler", "injectors", "fuel", "exhaust", "internals", "cooling", "ecu"];
 export const DRIVETRAIN_SLOTS: SlotId[] = ["gearbox", "clutch", "differential", "drivetrain"];
 export const BODY_SLOTS: SlotId[] = ["aero", "wing", "body"];
 export const SLOT_ORDER: SlotId[] = [...ENGINE_SLOTS, ...DRIVETRAIN_SLOTS, ...BODY_SLOTS];
 
 export const SLOT_LABEL: Record<SlotId, string> = {
+  engine: "Engine Swap",
   intake: "Air Intake",
   camshaft: "Camshafts",
   turbo: "Turbocharger",
@@ -32,10 +23,11 @@ export const SLOT_LABEL: Record<SlotId, string> = {
   drivetrain: "Drive Layout",
   aero: "Aero Kit",
   wing: "Rear Wing",
-  body: "Body & Tyres",
+  body: "Body Shape & Tyres",
 };
 
 export const SLOT_HELP: Record<SlotId, string> = {
+  engine: "Swap displacement and cylinder layout. Larger engines make more torque and power, but add mass and can overwhelm the clutch or gearbox.",
   intake: "Feeds air to the engine. A restrictive intake throttles airflow at high RPM and starves a turbo.",
   camshaft: "Valve timing and lift shape the volumetric efficiency curve: aggressive cams trade low-end torque for top-end power.",
   turbo: "Uses exhaust energy to compress intake air. Bigger units flow more but spool later and heat the charge.",
@@ -52,10 +44,16 @@ export const SLOT_HELP: Record<SlotId, string> = {
   drivetrain: "Which wheels are driven. Weight moves to the rear under acceleration: rear-drive gains grip, front-drive loses it, all-wheel drive uses all four tyres but adds weight and losses.",
   aero: "Front splitter, skirts and diffuser. Downforce presses the tyres into the road at speed for more grip, but every wing and fence also adds drag that costs top speed and trap speed.",
   wing: "Rear downforce. Grows with the square of speed: little help off the line, a lot at 200 km/h. Big wings add drag, so drag racers often run small spoilers and road racers big wings.",
-  body: "Wider arches let you fit wider tyres: more contact patch, more grip at launch. Flares add frontal area (drag), weight and rolling resistance.",
+  body: "Choose coupe, sedan or hatchback proportions, then add tyre width. Mass, drag, downforce and tyre grip all flow into the race simulation.",
 };
 
 export const PARTS: Part[] = [
+  // Engine swaps
+  { id: "engine-i4-20", slot: "engine", name: "AM-20 2.0L Inline-4", description: "Factory 86 mm bore, 86 mm stroke four-cylinder. Light and well matched to the stock drivetrain.", price: 0, layout: "Inline-4, DOHC 16v", displacementL: 2.0, cylinders: 4, boreMm: 86, strokeMm: 86, idleRpm: 850 },
+  { id: "engine-i5-25", massDeltaKg: 18, slot: "engine", name: "AM-25 2.5L Inline-5", description: "Long-stroke five-cylinder swap. More swept volume and torque with a modest weight penalty.", price: 3500, layout: "Inline-5, DOHC 20v", displacementL: 2.5, cylinders: 5, boreMm: 83, strokeMm: 92.2, idleRpm: 850, unlockAfter: "c2" },
+  { id: "engine-v6-32", massDeltaKg: 42, slot: "engine", name: "AM-32 3.2L V6", description: "Compact-angle V6 with a broad torque curve. Extra mass and cylinder capacity reward stronger supporting parts.", price: 5200, layout: "60° V6, DOHC 24v", displacementL: 3.2, cylinders: 6, boreMm: 89, strokeMm: 86, idleRpm: 800, unlockAfter: "c3" },
+  { id: "engine-v8-40", massDeltaKg: 72, slot: "engine", name: "AM-40 4.0L V8", description: "High-displacement V8 swap. Strongest output, but its weight and torque demand a capable chassis and driveline.", price: 8500, layout: "90° V8, DOHC 32v", displacementL: 4.0, cylinders: 8, boreMm: 86, strokeMm: 86, idleRpm: 800, unlockAfter: "c5" },
+
   // Intake
   { id: "intake-stock", slot: "intake", name: "OEM Airbox", description: "Quiet, paper-element airbox with a narrow snorkel.", price: 0, flowCapacity: 0.14 },
   { id: "intake-cai", massDeltaKg: -1, slot: "intake", name: "Cold Air Intake", description: "Shielded cone filter drawing from the bumper.", price: 450, flowCapacity: 0.22 },
@@ -149,9 +147,11 @@ export const PARTS: Part[] = [
   { id: "wing-swan", slot: "wing", name: "Swan-Neck Race Wing", description: "Top-mounted swan-neck uprights leave the wing's suction side clean: more downforce per unit of drag.", price: 2900, style: "swan", dragAreaDelta: 0.045, downforceArea: 0.62, downforceFront: 0, massKg: 6, gripBonus: 0, rollingDelta: 0, unlockAfter: "c4" },
 
   // Body width and tyres
-  { id: "body-stock", slot: "body", name: "OEM Body + 225 Tyres", description: "Factory steel arches on 225/45 R18 tyres.", price: 0, style: "stock", dragAreaDelta: 0, downforceArea: 0, downforceFront: 0.5, massKg: 0, gripBonus: 0, rollingDelta: 0, tyreWidthMm: 225, trackDelta: 0 },
-  { id: "body-overfender", slot: "body", name: "Bolt-On Overfenders + 255 Tyres", description: "Riveted fibreglass flares over 255/40 R18 semi-slicks. More grip off the line, a little more drag.", price: 2200, style: "overfender", dragAreaDelta: 0.03, downforceArea: 0, downforceFront: 0.5, massKg: 14, gripBonus: 0.06, rollingDelta: 0.0006, tyreWidthMm: 255, trackDelta: 0.035, unlockAfter: "c2" },
-  { id: "body-wide", slot: "body", name: "Full Wide-Body + 285 Tyres", description: "Moulded wide-body panels and 285/35 R18 tyres. Huge contact patch for launches, more frontal area and weight.", price: 4600, style: "widebody", dragAreaDelta: 0.05, downforceArea: 0.04, downforceFront: 0.3, massKg: 22, gripBonus: 0.11, rollingDelta: 0.0011, tyreWidthMm: 285, trackDelta: 0.06, unlockAfter: "c4" },
+  { id: "body-stock", slot: "body", name: "OEM Coupe + 225 Tyres", description: "Factory fastback coupe shell on 225/45 R18 tyres.", price: 0, style: "stock", shape: "coupe", dragAreaDelta: 0, downforceArea: 0, downforceFront: 0.5, massKg: 0, gripBonus: 0, rollingDelta: 0, tyreWidthMm: 225, trackDelta: 0 },
+  { id: "body-hatch", slot: "body", name: "Lightweight Hatchback + 235 Tyres", description: "Short-roof hatch shell with a light rear structure. Lower mass helps launches; its blunt tail costs some high-speed efficiency.", price: 1800, style: "stock", shape: "hatchback", dragAreaDelta: 0.035, downforceArea: 0, downforceFront: 0.5, massKg: -35, gripBonus: 0.02, rollingDelta: 0.0002, tyreWidthMm: 235, trackDelta: 0.01, unlockAfter: "c1" },
+  { id: "body-sedan", slot: "body", name: "Sport Sedan + 245 Tyres", description: "Long-deck four-door profile with a planted rear axle. Extra shell mass and tyre grip trade against a cleaner high-speed shape.", price: 2600, style: "stock", shape: "sedan", dragAreaDelta: -0.02, downforceArea: 0.025, downforceFront: 0.42, massKg: 45, gripBonus: 0.04, rollingDelta: 0.0004, tyreWidthMm: 245, trackDelta: 0.02, unlockAfter: "c2" },
+  { id: "body-overfender", slot: "body", name: "Bolt-On Overfenders + 255 Tyres", description: "Riveted fibreglass flares over 255/40 R18 semi-slicks. More grip off the line, a little more drag.", price: 2200, style: "overfender", shape: "coupe", dragAreaDelta: 0.03, downforceArea: 0, downforceFront: 0.5, massKg: 14, gripBonus: 0.06, rollingDelta: 0.0006, tyreWidthMm: 255, trackDelta: 0.035, unlockAfter: "c2" },
+  { id: "body-wide", slot: "body", name: "Full Wide-Body Coupe + 285 Tyres", description: "Moulded wide-body panels and 285/35 R18 tyres. Huge contact patch for launches, more frontal area and weight.", price: 4600, style: "widebody", shape: "coupe", dragAreaDelta: 0.05, downforceArea: 0.04, downforceFront: 0.3, massKg: 22, gripBonus: 0.11, rollingDelta: 0.0011, tyreWidthMm: 285, trackDelta: 0.06, unlockAfter: "c4" },
 ] as Part[];
 
 
@@ -172,6 +172,7 @@ export function partsForSlot(slot: SlotId): Part[] {
 }
 
 export const STOCK_BUILD: Build = {
+  engine: "engine-i4-20",
   intake: "intake-stock",
   camshaft: "cam-stock",
   turbo: "turbo-none",

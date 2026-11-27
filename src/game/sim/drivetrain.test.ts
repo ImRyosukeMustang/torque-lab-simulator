@@ -13,6 +13,18 @@ describe("aerodynamic loads", () => {
     expect(wide.tyreMu).toBeGreaterThan(stock.tyreMu);
   });
 
+  it("gives hatchbacks and sedans distinct aero, mass and tyre setups", () => {
+    const stock = bodyworkSpec(STOCK_BUILD);
+    const hatch = bodyworkSpec({ ...STOCK_BUILD, body: "body-hatch" });
+    const sedan = bodyworkSpec({ ...STOCK_BUILD, body: "body-sedan" });
+
+    expect(hatch.massKg).toBeLessThan(stock.massKg);
+    expect(hatch.dragCdA).toBeGreaterThan(stock.dragCdA);
+    expect(sedan.massKg).toBeGreaterThan(stock.massKg);
+    expect(sedan.dragCdA).toBeLessThan(stock.dragCdA);
+    expect(sedan.tyreMu).toBeGreaterThan(stock.tyreMu);
+  });
+
   it("scales drag with speed squared and gives the factory body no downforce", () => {
     const at100 = aeroLoads(STOCK_BUILD, 100);
     const at200 = aeroLoads(STOCK_BUILD, 200);
