@@ -90,6 +90,27 @@ function hoodShape() {
 }
 
 function greenhouseShape(shape: BodyPart["shape"]) {
+  if (shape === "light-coupe") {
+    const s = new THREE.Shape();
+    s.moveTo(0.52, 0.96);
+    s.quadraticCurveTo(0.22, 1.15, -0.08, 1.22);
+    s.quadraticCurveTo(-0.55, 1.27, -0.98, 1.22);
+    s.quadraticCurveTo(-1.42, 1.13, -1.76, 0.99);
+    s.lineTo(-1.76, 0.95);
+    s.lineTo(0.52, 0.95);
+    return s;
+  }
+  if (shape === "four-door-coupe") {
+    const s = new THREE.Shape();
+    s.moveTo(0.52, 0.96);
+    s.quadraticCurveTo(0.22, 1.2, -0.08, 1.29);
+    s.quadraticCurveTo(-0.52, 1.33, -0.96, 1.27);
+    s.quadraticCurveTo(-1.35, 1.2, -1.68, 1.04);
+    s.lineTo(-1.88, 0.99);
+    s.lineTo(-1.88, 0.95);
+    s.lineTo(0.52, 0.95);
+    return s;
+  }
   const s = new THREE.Shape();
   if (shape === "hatchback") {
     s.moveTo(0.52, 0.96);
@@ -121,6 +142,21 @@ function greenhouseShape(shape: BodyPart["shape"]) {
 
 function roofShape(shape: BodyPart["shape"]) {
   const s = new THREE.Shape();
+  if (shape === "light-coupe") {
+    s.moveTo(-0.03, 1.285);
+    s.quadraticCurveTo(-0.62, 1.335, -1.1, 1.29);
+    s.lineTo(-1.1, 1.265);
+    s.quadraticCurveTo(-0.55, 1.31, -0.03, 1.26);
+    return s;
+  }
+  if (shape === "four-door-coupe") {
+    s.moveTo(-0.03, 1.352);
+    s.quadraticCurveTo(-0.56, 1.39, -1.04, 1.34);
+    s.quadraticCurveTo(-1.48, 1.27, -1.86, 1.12);
+    s.lineTo(-1.87, 1.09);
+    s.quadraticCurveTo(-1.3, 1.25, -0.03, 1.327);
+    return s;
+  }
   if (shape === "hatchback") {
     s.moveTo(-0.02, 1.352);
     s.quadraticCurveTo(-0.62, 1.405, -1.16, 1.36);
@@ -529,7 +565,7 @@ function BodyDetails({ shape }: { shape: BodyPart["shape"] }) {
           <mesh position={[-0.66, 0.62, 0.9218]} material={seam}>
             <planeGeometry args={[0.006, 0.64]} />
           </mesh>
-          {shape === "sedan" && (
+          {(shape === "sedan" || shape === "four-door-coupe") && (
             <mesh position={[-1.15, 0.62, 0.9218]} material={seam}>
               <planeGeometry args={[0.006, 0.64]} />
             </mesh>

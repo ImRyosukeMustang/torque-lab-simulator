@@ -33,7 +33,7 @@ export interface Kit {
   aero: "stock" | "lip" | "gt";
   wing: "ducktail" | "lip" | "gt" | "swan";
   body: "stock" | "overfender" | "widebody";
-  shape: "coupe" | "sedan" | "hatchback";
+  shape: "coupe" | "sedan" | "hatchback" | "light-coupe" | "four-door-coupe";
 }
 
 export interface CarDraw {
@@ -390,7 +390,14 @@ function drawCar(ctx: CanvasRenderingContext2D, cx: number, ground: number, S: n
   ctx.quadraticCurveTo(X(2.22), Y(0.72), X(2.06), Y(0.78));
   ctx.quadraticCurveTo(X(1.3), Y(0.93), X(0.62), Y(0.98));
   ctx.quadraticCurveTo(X(0.22), Y(1.22), X(-0.1), Y(1.3));
-  if (car.kit.shape === "hatchback") {
+  if (car.kit.shape === "light-coupe") {
+    ctx.quadraticCurveTo(X(-0.55), Y(1.29), X(-0.98), Y(1.24));
+    ctx.quadraticCurveTo(X(-1.4), Y(1.16), X(-1.72), Y(1.0));
+  } else if (car.kit.shape === "four-door-coupe") {
+    ctx.quadraticCurveTo(X(-0.52), Y(1.33), X(-0.96), Y(1.27));
+    ctx.quadraticCurveTo(X(-1.35), Y(1.2), X(-1.68), Y(1.04));
+    ctx.lineTo(X(-1.88), Y(0.99));
+  } else if (car.kit.shape === "hatchback") {
     ctx.quadraticCurveTo(X(-0.58), Y(1.36), X(-1.08), Y(1.31));
     ctx.quadraticCurveTo(X(-1.58), Y(1.27), X(-1.92), Y(1.12));
     ctx.lineTo(X(-2.1), Y(0.99));
@@ -435,7 +442,13 @@ function drawCar(ctx: CanvasRenderingContext2D, cx: number, ground: number, S: n
   ctx.beginPath();
   ctx.moveTo(X(0.5), Y(0.99));
   ctx.quadraticCurveTo(X(0.18), Y(1.2), X(-0.1), Y(1.26));
-  if (car.kit.shape === "hatchback") {
+  if (car.kit.shape === "light-coupe") {
+    ctx.quadraticCurveTo(X(-0.55), Y(1.25), X(-0.98), Y(1.2));
+    ctx.quadraticCurveTo(X(-1.4), Y(1.12), X(-1.68), Y(0.99));
+  } else if (car.kit.shape === "four-door-coupe") {
+    ctx.quadraticCurveTo(X(-0.52), Y(1.29), X(-0.92), Y(1.25));
+    ctx.quadraticCurveTo(X(-1.3), Y(1.18), X(-1.68), Y(1.03));
+  } else if (car.kit.shape === "hatchback") {
     ctx.quadraticCurveTo(X(-0.58), Y(1.32), X(-1.08), Y(1.27));
     ctx.quadraticCurveTo(X(-1.58), Y(1.22), X(-1.83), Y(1.1));
   } else if (car.kit.shape === "sedan") {

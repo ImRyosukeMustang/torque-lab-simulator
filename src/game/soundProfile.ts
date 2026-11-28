@@ -1,8 +1,13 @@
 import { getPart } from './sim/parts';
 import type { Build, TransmissionType } from './sim/types';
 
+export type EngineSampleId = "inline-turbo" | "v6-full-throttle" | "v-engine-collection";
+
 /** Levels/depths are normalized 0..1; frequencies are Hz and times seconds. */
 export interface SoundProfile {
+  engineSample: EngineSampleId;
+  sampleBaseRpm: number;
+  sampleLevel: number;
   firingFrequencyFactor: number;
   engineScale: number;
   intakeLevel: number; /** Induction honk amplitude. */
@@ -52,7 +57,15 @@ export function soundProfile(build: Build): SoundProfile {
   const diff = getPart('differential', build.differential), drive = getPart('drivetrain', build.drivetrain);
   const aero = getPart('aero', build.aero), wing = getPart('wing', build.wing), body = getPart('body', build.body);
   const forced = turbo.maximumFlow > 0;
+  const engineSample: EngineSampleId = engine.cylinders === 6
+    ? "v6-full-throttle"
+    : engine.cylinders >= 8
+      ? "v-engine-collection"
+      : "inline-turbo";
   return {
+    engineSample,
+    sampleBaseRpm: engine.cylinders >= 8 ? 6000 : engine.cylinders === 6 ? 6500 : 5500,
+    sampleLevel: 0.62,
     firingFrequencyFactor: engine.cylinders / 4,
     engineScale: unit(engine.displacementL / 4),
     intakeLevel: unit(intake.flowCapacity * 1.8), intakeHz: 150 + intake.flowCapacity * 380,

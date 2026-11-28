@@ -25,6 +25,18 @@ describe("aerodynamic loads", () => {
     expect(sedan.tyreMu).toBeGreaterThan(stock.tyreMu);
   });
 
+  it("makes lightweight coupes and four-door GT fastbacks behave differently", () => {
+    const stock = bodyworkSpec(STOCK_BUILD);
+    const lightCoupe = bodyworkSpec({ ...STOCK_BUILD, body: "body-light-coupe" });
+    const fourDoorCoupe = bodyworkSpec({ ...STOCK_BUILD, body: "body-fourdoor-coupe" });
+
+    expect(lightCoupe.massKg).toBeLessThan(stock.massKg);
+    expect(lightCoupe.dragCdA).toBeLessThan(stock.dragCdA);
+    expect(fourDoorCoupe.massKg).toBeGreaterThan(stock.massKg);
+    expect(fourDoorCoupe.tyreMu).toBeGreaterThan(stock.tyreMu);
+    expect(fourDoorCoupe.dragCdA).toBeLessThan(stock.dragCdA);
+  });
+
   it("scales drag with speed squared and gives the factory body no downforce", () => {
     const at100 = aeroLoads(STOCK_BUILD, 100);
     const at200 = aeroLoads(STOCK_BUILD, 200);

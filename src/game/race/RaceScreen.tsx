@@ -38,6 +38,7 @@ import { speed, speedUnit, speedValue } from "../units";
 import { ChristmasTree, type TreeState } from "./ChristmasTree";
 import { drawRace, newRaceView, type Kit } from "./drawRace";
 import { Tachometer } from "./Tachometer";
+import { launchFeedback, photoFinishMargin, raceLossTip } from "./raceFeedback";
 
 interface Hud {
   t: number;
@@ -66,6 +67,8 @@ interface ResultInfo {
   rivalTrap: number | null;
   purse: number;
   firstWin: boolean;
+  launchRpm: number | null;
+  idealLaunchRpm: number;
 }
 
 const GAS_KEYS = new Set(["ArrowUp", "KeyW"]);
@@ -102,7 +105,8 @@ export function RaceScreen({ cfg }: { cfg: RaceConfig }) {
   const [showControls, setShowControls] = useState(!controlsHintDismissed);
   const rival = RIVALS.find((r) => r.id === cfg.rivalId)!;
   const event = cfg.eventId ? RACE_EVENTS.find((e) => e.id === cfg.eventId) ?? null : null;
-  const carInfo = useRef<{ revLimit: number; shiftRpm: number[]; launchWindow: [number, number] } | null>(null);
+  const carInfo = useRef<{ revLimit: number; shiftRpm: number[]; launchWindow: [number, number]; idealLaunchRpm: number } | null>(null);
+  const [finishing, setFinishing] = useState(false);
 
   useEffect(() => {
     if (!raceStarted) return;
@@ -114,7 +118,7 @@ export function RaceScreen({ cfg }: { cfg: RaceConfig }) {
     const { game, settings } = store;
     const sim = simulate(game.build, game.tune);
     const car = makeRaceCar(game.build, game.tune, sim, { rimStyle: game.cosmetics.rimStyle });
-    carInfo.current = { revLimit: car.revLimit, shiftRpm: car.shiftRpm, launchWindow: car.launchWindow };
+    carInfo.current = { revLimit: car.revLimit, shiftRpm: car.shiftRpm, launchWindow: car.launchWindow, idealLaunchRpm: car.idealLaunchRpm };
     const ghost = rivalGhost(cfg.rivalId, cfg.distance);
     const dist = RACE_DISTANCE_M[cfg.distance];
     const s = newCarState();
@@ -142,12 +146,17 @@ export function RaceScreen({ cfg }: { cfg: RaceConfig }) {
     let green = false;
     let ended = false;
     let foul = false;
+    let launchRpm: number | null = null;
+    let lastSpinFeedback = -Infinity;
+    let pendingResult: ResultInfo | null = null;
+    let slowMotionUntil = 0;
     let msg: Hud["message"] = { text: "Hold GAS to rev · LAUNCH on green", tone: "info", key: 0 };
     let msgUntil = Infinity;
     let raf = 0;
     input.current = { gas: false, up: 0, down: 0 };
     setResult(null);
     setDoubled(false);
+    setFinishing(false);
     if (settings.sound) engineAudio.start({ volume: settings.volume, profile: soundProfile(game.build) });
     const say = (text: string, tone: "good" | "bad" | "info", forS = 1.1) => {
       msg = { text, tone, key: performance.now() };
@@ -184,7 +193,7 @@ export function RaceScreen({ cfg }: { cfg: RaceConfig }) {
         raceSound.win();
         getGamePlatform().happytime();
       } else raceSound.lose();
-      setResult({
+      const resultInfo: ResultInfo = {
         won,
         foul,
         dnf,
@@ -198,7 +207,16 @@ export function RaceScreen({ cfg }: { cfg: RaceConfig }) {
         rivalTrap: ghost.trapKmh,
         purse: out?.purse ?? 0,
         firstWin: out?.firstWin ?? false,
-      });
+        launchRpm,
+        idealLaunchRpm: car.idealLaunchRpm,
+      };
+      if (photoFinishMargin(playerTotal, rivalTotal) !== null) {
+        pendingResult = resultInfo;
+        slowMotionUntil = clock.now() + 700;
+        setFinishing(true);
+      } else {
+        setResult(resultInfo);
+      }
     };
 
     const frame = (now: number) => {
@@ -211,6 +229,7 @@ export function RaceScreen({ cfg }: { cfg: RaceConfig }) {
         inp.up--;
         if (ended) break;
         if (!s.launched) {
+          const stagedRpm = s.rpm;
           const ok = launch(s, car);
           if (!ok) {
             foul = true;
@@ -218,8 +237,9 @@ export function RaceScreen({ cfg }: { cfg: RaceConfig }) {
             say("RED LIGHT: JUMPED THE START", "bad", 5);
             finish(false);
           } else {
-            const rt = s.t;
-            say(rt < 0.3 ? `GREAT LAUNCH · RT ${rt.toFixed(3)}` : `RT ${rt.toFixed(3)}`, rt < 0.3 ? "good" : "info", 1.2);
+            launchRpm = stagedRpm;
+            const feedback = launchFeedback(stagedRpm, car.idealLaunchRpm, car.launchWindow);
+            say(feedback.text, feedback.tone, 1.4);
           }
         } else if (s.finishT === null) onShift(shiftUp(car, s));
       }
@@ -235,7 +255,7 @@ export function RaceScreen({ cfg }: { cfg: RaceConfig }) {
       thr += (want - thr) * Math.min(1, dt / (want > thr ? 0.12 : 0.08));
       // Physics
       if (!ended || s.finishT !== null) {
-        acc += dt;
+        acc += dt * (clockNow < slowMotionUntil ? 0.2 : 1);
         while (acc >= RACE_DT) {
           stepCar(car, s, s.finishT !== null ? 0 : thr, dist);
           acc -= RACE_DT;
@@ -246,6 +266,10 @@ export function RaceScreen({ cfg }: { cfg: RaceConfig }) {
       }
       if (s.limiter && !lastLimiter) engineAudio.limiter(0.1);
       lastLimiter = s.limiter;
+      if (!ended && s.launched && s.finishT === null && s.spin >= 0.35 && s.t - lastSpinFeedback > 1.4) {
+        say("WHEEL SPIN", "bad", 0.9);
+        lastSpinFeedback = s.t;
+      }
       // Tree
       if (!staged && s.t > startT + 0.4) {
         staged = true;
@@ -305,6 +329,11 @@ export function RaceScreen({ cfg }: { cfg: RaceConfig }) {
           rivalTree: { ...lit(s.t), red: false },
           message: msg,
         });
+      }
+      if (pendingResult && clockNow >= slowMotionUntil) {
+        setResult(pendingResult);
+        pendingResult = null;
+        setFinishing(false);
       }
       raf = requestAnimationFrame(frame);
     };
@@ -369,6 +398,7 @@ export function RaceScreen({ cfg }: { cfg: RaceConfig }) {
 
   const info = carInfo.current;
   const dist = RACE_DISTANCE_M[cfg.distance];
+  const closeMargin = result ? photoFinishMargin(result.total, result.rivalTotal) : null;
   const nextEvent = event ? RACE_EVENTS[RACE_EVENTS.findIndex((e) => e.id === event.id) + 1] : undefined;
   const wins = useGame((s) => s.game.raceWins);
   const nextOpen = nextEvent && isRaceUnlocked(nextEvent.id, wins);
@@ -492,7 +522,14 @@ export function RaceScreen({ cfg }: { cfg: RaceConfig }) {
               speedUnit={speedUnit(units)}
             />
           </div>
-          {!result && (
+          {finishing && (
+            <div className="pointer-events-none absolute inset-x-0 top-[38%] z-10 flex justify-center">
+              <span className="animate-photo-finish rounded-md border border-primary/60 bg-background/85 px-5 py-2 font-display text-3xl font-bold uppercase tracking-[0.18em] text-primary shadow-glow sm:text-5xl">
+                Photo finish
+              </span>
+            </div>
+          )}
+          {!result && !finishing && (
             <>
               <div className="absolute bottom-4 left-3 flex flex-col gap-2 sm:left-5">
                 <Button variant="pedal" size="pedal" onPointerDown={press("up")} aria-label={hud.launched ? "Shift up" : "Launch"}>
@@ -532,6 +569,19 @@ export function RaceScreen({ cfg }: { cfg: RaceConfig }) {
       {result && (
         <div className="absolute inset-0 z-20 flex items-center justify-center bg-background/60 p-4 backdrop-blur-sm">
           <div className="w-full max-w-md animate-pop-in space-y-4 rounded-xl border border-border bg-card p-5 shadow-2xl">
+            {closeMargin !== null && (
+              <div className="animate-photo-finish overflow-hidden rounded-md border border-primary/50 bg-primary/10 text-center">
+                <div className="photo-finish-stripe h-3" aria-hidden="true" />
+                <div className="py-2">
+                  <div className="font-display text-xl font-bold uppercase tracking-[0.2em] text-primary">
+                    Photo finish
+                  </div>
+                  <div className="font-mono text-sm font-semibold uppercase tabular">
+                    {result.won ? "Won" : "Lost"} by {closeMargin.toFixed(3)} s
+                  </div>
+                </div>
+              </div>
+            )}
             <div className="text-center">
               <div className={cn("font-display text-5xl font-bold uppercase tracking-wider", result.won ? "text-tree-green" : "text-destructive")}>
                 {result.foul ? "Red light" : result.dnf ? "Did not finish" : result.won ? "You win" : "You lose"}
@@ -546,6 +596,17 @@ export function RaceScreen({ cfg }: { cfg: RaceConfig }) {
                       : `${rival.name} took the win.`}
               </p>
             </div>
+            {!result.won && !result.foul && !result.dnf && (
+              <p className="rounded-md border border-warning/40 bg-warning/10 p-2.5 text-sm text-foreground">
+                {raceLossTip({
+                  launchRpm: result.launchRpm,
+                  idealLaunchRpm: result.idealLaunchRpm,
+                  reactionS: result.rt,
+                  sixtyFtS: result.sixty,
+                  rivalSixtyFtS: rivalGhost(cfg.rivalId, cfg.distance).sixtyFtS,
+                })}
+              </p>
+            )}
             <table className="w-full font-mono text-xs tabular">
               <thead className="text-[10px] uppercase tracking-widest text-muted-foreground">
                 <tr>
@@ -607,8 +668,8 @@ export function RaceScreen({ cfg }: { cfg: RaceConfig }) {
               </p>
             )}
             <div className="flex flex-wrap gap-2">
-              <Button className="flex-1" variant="outline" onClick={() => setRunKey((k) => k + 1)}>
-                <RotateCcw /> Rematch
+              <Button className="flex-1" variant="race" onClick={() => setRunKey((k) => k + 1)}>
+                <RotateCcw /> Race again
               </Button>
               {result.won && nextEvent && nextOpen ? (
                 <Button className="flex-1" variant="race" onClick={() => startRace({ eventId: nextEvent.id, rivalId: nextEvent.rival, distance: nextEvent.distance })}>

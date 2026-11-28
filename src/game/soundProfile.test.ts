@@ -18,6 +18,13 @@ describe('physical sound profiles', () => {
       .sort((a, b) => a.slot === 'turbo' && b.slot === 'turbo' ? a.maximumFlow - b.maximumFlow : 0);
     for (let i = 1; i < turbos.length; i++) expect(swap('turbo', turbos[i]!.id).whistleHz).toBeLessThan(swap('turbo', turbos[i - 1]!.id).whistleHz);
   });
+  it.each([
+    ["engine-i4-20", "inline-turbo"],
+    ["engine-v6-32", "v6-full-throttle"],
+    ["engine-v8-40", "v-engine-collection"],
+  ] as const)("selects the supplied %s recording for that engine", (engineId, sample) => {
+    expect(swap("engine", engineId).engineSample).toBe(sample);
+  });
   it('gives race cams more lope', () => expect(swap('camshaft', 'cam-race').lopeDepth).toBeGreaterThan(stock.lopeDepth));
   it.each(['exh-3in', 'exh-header'])('gives %s more rasp', id => expect(swap('exhaust', id).rasp).toBeGreaterThan(stock.rasp));
   it('gives standalone a harder cut than stock and piggyback', () => {
@@ -41,7 +48,7 @@ describe('physical sound profiles', () => {
     for (const slot of SLOT_ORDER) for (const part of partsForSlot(slot)) {
       for (const [key, value] of Object.entries(swap(slot, part.id))) if (typeof value === 'number') {
         expect(Number.isFinite(value), key).toBe(true); expect(value, key).toBeGreaterThanOrEqual(0);
-        if (!/Hz$|DurationS$|TimeS$|Factor$/.test(key)) expect(value, key).toBeLessThanOrEqual(1);
+        if (!/Hz$|Rpm$|DurationS$|TimeS$|Factor$/.test(key)) expect(value, key).toBeLessThanOrEqual(1);
       }
     }
   });

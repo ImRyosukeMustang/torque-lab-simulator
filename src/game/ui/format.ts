@@ -1,6 +1,13 @@
-import type { Part } from "../sim/types";
+import type { BodyPart, Part } from "../sim/types";
 
 export const fmtCredits = (n: number) => `${Math.round(n).toLocaleString("en-US")} cr`;
+const BODY_SHAPE_LABEL: Record<BodyPart["shape"], string> = {
+  coupe: "Coupe",
+  sedan: "Sport saloon",
+  hatchback: "Hatchback",
+  "light-coupe": "Lightweight coupe",
+  "four-door-coupe": "Four-door GT coupe",
+};
 
 /** Engineering specs shown for a part (no predicted horsepower: the dyno reveals that). */
 export function partSpecs(p: Part, engineCylinders = 4): [string, string][] {
@@ -113,7 +120,7 @@ export function partSpecs(p: Part, engineCylinders = 4): [string, string][] {
         ["Weight", p.massKg ? `${p.massKg > 0 ? "+" : ""}${p.massKg} kg` : "—"],
       ];
       if (p.slot === "body") {
-        rows.unshift(["Shape", { coupe: "Coupe", sedan: "Sedan", hatchback: "Hatchback" }[p.shape]]);
+        rows.unshift(["Shape", BODY_SHAPE_LABEL[p.shape]]);
         rows.push(["Tyre grip", p.gripBonus ? `+${Math.round((p.gripBonus / 1.05) * 100)}%` : "Factory"]);
       }
       return rows;

@@ -3,6 +3,7 @@ import { useFrame } from "@react-three/fiber";
 import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { dynoLive } from "../dynoLive";
+import { getPart } from "../sim/parts";
 import type { SlotId } from "../sim/types";
 import { useGame } from "../store";
 import { SCENE_COLORS as C } from "./layout";
@@ -84,14 +85,21 @@ function useHeatGlow(group: React.RefObject<THREE.Group | null>) {
   });
 }
 
-const PORT_X = [0.82, 0.96, 1.1, 1.24] as const;
+function portPositions(cylinders: number) {
+  const count = Math.max(1, cylinders);
+  return Array.from({ length: count }, (_, i) =>
+    count === 1 ? 1.03 : 0.82 + (i / (count - 1)) * 0.42,
+  );
+}
 
 const INTERNALS_BADGE: Record<string, string> = { "int-hicomp": "#2f6fb0", "int-forged": "#d07a1a", "int-race": "#b3221a" };
 
 function Internals() {
   const id = useGame((s) => s.game.build.internals);
+  const cylinders = getPart("engine", useGame((s) => s.game.build.engine)).cylinders;
   const forged = id !== "int-stock";
   const badge = INTERNALS_BADGE[id];
+  const ribX = portPositions(cylinders);
   return (
     <SlotGroup slot="internals">
       {/* block */}
@@ -100,9 +108,9 @@ function Internals() {
         <meshStandardMaterial color={C.castIron} metalness={0.5} roughness={0.7} />
       </mesh>
       {/* block ribs */}
-      {[0.84, 0.97, 1.1, 1.23].map((x) => (
+      {ribX.map((x) => (
         <mesh key={x} position={[x, 0.5, 0.172]}>
-          <boxGeometry args={[0.025, 0.26, 0.012]} />
+          <boxGeometry args={[0.018, 0.26, 0.012]} />
           <meshStandardMaterial color={C.castIron} metalness={0.5} roughness={0.75} />
         </mesh>
       ))}
@@ -130,6 +138,10 @@ function Internals() {
 
 function EngineCore() {
   const cam = useGame((s) => s.game.build.camshaft);
+  const enginePart = getPart("engine", useGame((s) => s.game.build.engine));
+  const rows = enginePart.cylinders >= 6 ? 2 : 1;
+  const cylindersPerRow = enginePart.cylinders / rows;
+  const positions = portPositions(cylindersPerRow);
   const coverColor = cam === "cam-race" ? "#8e1e14" : cam === "cam-vvt" ? "#24476e" : cam === "cam-street" ? C.aluminium : C.blackPlastic;
   return (
     <group>
@@ -150,21 +162,42 @@ function EngineCore() {
         </mesh>
       ))}
       <SlotGroup slot="camshaft">
-        <mesh position={[1.03, 0.81, 0]} castShadow>
-          <boxGeometry args={[0.6, 0.08, 0.3]} />
-          <meshStandardMaterial color={coverColor} metalness={cam === "cam-street" ? 0.7 : 0.2} roughness={cam === "cam-race" || cam === "cam-vvt" ? 0.85 : 0.4} />
-        </mesh>
-        {[-0.08, 0.08].map((z) => (
-          <mesh key={z} position={[1.03, 0.855, z]}>
-            <boxGeometry args={[0.56, 0.012, 0.02]} />
-            <meshStandardMaterial color={coverColor} metalness={0.5} roughness={0.4} />
-          </mesh>
-        ))}
-        {PORT_X.map((x) => (
-          <mesh key={x} position={[x, 0.875, 0.03]} castShadow>
-            <cylinderGeometry args={[0.022, 0.022, 0.07, 14]} />
-            <meshStandardMaterial color={C.blackPlastic} roughness={0.5} />
-          </mesh>
+        {Array.from({ length: rows }, (_, row) => {
+          const z = rows === 1 ? 0 : row === 0 ? -0.115 : 0.115;
+          const bankDepth = rows === 1 ? 0.3 : 0.17;
+          return (
+            <group key={row} position-z={z} rotation-y={rows === 1 ? 0 : row === 0 ? -0.18 : 0.18}>
+              <mesh position={[1.03, 0.81, 0]} castShadow>
+                <boxGeometry args={[0.62, 0.08, bankDepth]} />
+                <meshStandardMaterial color={coverColor} metalness={cam === "cam-street" ? 0.7 : 0.2} roughness={cam === "cam-race" || cam === "cam-vvt" ? 0.85 : 0.4} />
+              </mesh>
+              {[-1, 1].map((side) => (
+                <mesh key={side} position={[1.03, 0.855, side * bankDepth * 0.34]}>
+                  <boxGeometry args={[0.58, 0.012, 0.014]} />
+                  <meshStandardMaterial color={C.aluminium} metalness={0.8} roughness={0.3} />
+                </mesh>
+              ))}
+              {positions.map((x) => (
+                <group key={x}>
+                  <mesh position={[x, 0.875, 0.02]} castShadow>
+                    <cylinderGeometry args={[0.022, 0.022, 0.07, 14]} />
+                    <meshStandardMaterial color={C.blackPlastic} roughness={0.5} />
+                  </mesh>
+                  <mesh position={[x, 0.876, -0.035]} castShadow>
+                    <boxGeometry args={[0.045, 0.035, 0.052]} />
+                    <meshStandardMaterial color="#202327" metalness={0.25} roughness={0.62} />
+                  </mesh>
+                  <mesh position={[x, 0.897, -0.035]}>
+                    <boxGeometry args={[0.012, 0.004, 0.04]} />
+                    <meshStandardMaterial color={C.highlight} metalness={0.6} roughness={0.3} />
+                  </mesh>
+                </group>
+              ))}
+            </group>
+          );
+        })}
+        {portPositions(enginePart.cylinders).map((x) => (
+          <Tube key={x} points={[[x, 0.9, -0.05], [x, 0.92, -0.14], [x + 0.025, 0.89, -0.22]]} radius={0.006} color="#25282c" metal={0.15} rough={0.75} />
         ))}
         <mesh position={[0.86, 0.865, -0.09]}>
           <cylinderGeometry args={[0.025, 0.025, 0.03, 18]} />
@@ -177,6 +210,8 @@ function EngineCore() {
 
 function IntakeSystem({ turbo }: { turbo: boolean }) {
   const intake = useGame((s) => s.game.build.intake);
+  const cylinders = getPart("engine", useGame((s) => s.game.build.engine)).cylinders;
+  const ports = portPositions(cylinders);
   const hf = intake === "intake-hf";
   const pipeR = hf ? 0.042 : 0.034;
   const filterPos: [number, number, number] = [1.66, 0.6, -0.47];
@@ -208,7 +243,7 @@ function IntakeSystem({ turbo }: { turbo: boolean }) {
         <cylinderGeometry args={[0.065, 0.065, 0.62, 24]} />
         <meshStandardMaterial color={C.aluminium} metalness={0.75} roughness={0.38} />
       </mesh>
-      {PORT_X.map((x) => (
+      {ports.map((x) => (
         <Tube key={x} points={[[x, 0.79, -0.27], [x, 0.78, -0.22], [x, 0.73, -0.18]]} radius={0.024} color={C.aluminium} metal={0.75} rough={0.38} />
       ))}
       <mesh position={[1.39, 0.79, -0.31]} rotation-z={Math.PI / 2} castShadow>
@@ -255,6 +290,8 @@ function FuelSupply() {
 
 function FuelSystem() {
   const inj = useGame((s) => s.game.build.injectors);
+  const cylinders = getPart("engine", useGame((s) => s.game.build.engine)).cylinders;
+  const ports = portPositions(cylinders);
   const color = { "inj-stock": "#5d6166", "inj-440": "#2f6fb0", "inj-750": "#c99a1d", "inj-1000": "#a3291c", "inj-1300": "#2f7a3e" }[inj] ?? "#5d6166";
   return (
     <SlotGroup slot="injectors">
@@ -262,7 +299,7 @@ function FuelSystem() {
         <cylinderGeometry args={[0.014, 0.014, 0.58, 12]} />
         <meshStandardMaterial color={inj === "inj-stock" ? C.steel : "#b03a26"} metalness={0.8} roughness={0.3} />
       </mesh>
-      {PORT_X.map((x) => (
+      {ports.map((x) => (
         <mesh key={x} position={[x, 0.82, -0.16]} rotation-x={0.35} castShadow>
           <cylinderGeometry args={[0.012, 0.009, 0.07, 12]} />
           <meshStandardMaterial color={color} metalness={0.4} roughness={0.45} />
@@ -275,6 +312,8 @@ function FuelSystem() {
 
 function ExhaustAndTurbo({ turbo }: { turbo: string }) {
   const exhaust = useGame((s) => s.game.build.exhaust);
+  const cylinders = getPart("engine", useGame((s) => s.game.build.engine)).cylinders;
+  const ports = portPositions(cylinders);
   const heatRef = useRef<THREE.Group>(null);
   const wheel = useRef<THREE.Mesh>(null);
   useHeatGlow(heatRef);
@@ -292,7 +331,7 @@ function ExhaustAndTurbo({ turbo }: { turbo: string }) {
   return (
     <group ref={heatRef}>
       <SlotGroup slot="exhaust">
-        {PORT_X.map((x) => (
+        {ports.map((x) => (
           <Tube key={x} points={tubular ? [[x, 0.66, 0.17], [x, 0.66, 0.24], [x + (collector[0] - x) * 0.3, 0.6, 0.31], [(x + collector[0]) / 2, 0.55, 0.35], collector] : [[x, 0.66, 0.17], [x, 0.64, 0.27], [(x + collector[0]) / 2, 0.57, 0.34], collector]} radius={primaryR} color={pipeColor} metal={0.85} rough={0.3} heat />
         ))}
         <Tube
@@ -496,6 +535,35 @@ function BayDetails() {
         <cylinderGeometry args={[0.1, 0.1, 0.06, 28]} />
         <meshStandardMaterial color="#202326" metalness={0.6} roughness={0.4} />
       </mesh>
+      <Tube points={[[1.31, 0.84, -0.5], [1.24, 0.89, 0], [1.31, 0.84, 0.5]]} radius={0.022} color={C.aluminium} metal={0.86} rough={0.28} />
+      {[-1, 1].map((s) => (
+        <group key={s}>
+          <mesh position={[0.75, 0.545, s * 0.48]} castShadow>
+            <cylinderGeometry args={[0.026, 0.026, 0.02, 16]} />
+            <meshStandardMaterial color={s === 1 ? "#b3221a" : C.steel} metalness={0.78} roughness={0.32} />
+          </mesh>
+          <mesh position={[1.62, 0.65, s * 0.43]}>
+            <cylinderGeometry args={[0.032, 0.032, 0.022, 20]} />
+            <meshStandardMaterial color={C.highlight} metalness={0.45} roughness={0.38} />
+          </mesh>
+        </group>
+      ))}
+      <mesh position={[1.06, 0.91, 0.28]} rotation-x={Math.PI / 2} castShadow>
+        <cylinderGeometry args={[0.045, 0.045, 0.025, 24]} />
+        <meshStandardMaterial color={C.highlight} metalness={0.7} roughness={0.28} />
+      </mesh>
+      <mesh position={[1.81, 0.77, -0.36]} rotation-z={Math.PI / 2}>
+        <cylinderGeometry args={[0.035, 0.035, 0.025, 20]} />
+        <meshStandardMaterial color={C.steel} metalness={0.82} roughness={0.3} />
+      </mesh>
+      <Tube points={[[0.8, 0.48, 0.48], [0.96, 0.57, 0.38], [1.08, 0.6, 0.2], [1.16, 0.6, 0.12]]} radius={0.009} color="#b3221a" metal={0.1} rough={0.8} />
+      <Tube points={[[0.83, 0.44, 0.48], [0.92, 0.5, 0.35], [0.98, 0.52, 0.1], [1.02, 0.52, -0.06]]} radius={0.008} color="#16181b" metal={0.1} rough={0.9} />
+      {([[0.89, 0.42, 0.53], [1.16, 0.42, 0.53], [0.89, 0.42, 0.43], [1.16, 0.42, 0.43]] as const).map(([x, y, z]) => (
+        <mesh key={`${x}-${y}-${z}`} position={[x, y, z]} castShadow>
+          <cylinderGeometry args={[0.008, 0.008, 0.012, 8]} />
+          <meshStandardMaterial color={C.steel} metalness={0.9} roughness={0.25} />
+        </mesh>
+      ))}
     </group>
   );
 }

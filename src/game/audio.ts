@@ -1,10 +1,12 @@
 import { getAudioContext, getMasterBus, getNoiseBuffer } from './audioCore';
 import type { SoundProfile } from './soundProfile';
+import { loadEngineSample } from "./audioSamples";
 export interface StartOptions { volume: number; profile: SoundProfile }
 type Source = OscillatorNode | AudioBufferSourceNode;
 interface Voice {
   ctx: AudioContext; profile: SoundProfile; out: GainNode; torque: GainNode;
   engine: GainNode; filter: BiquadFilterNode; harmonics: OscillatorNode[];
+  sample: GainNode; sampleFilter: BiquadFilterNode; sampleSource: AudioBufferSourceNode | null;
   intake: GainNode; intakeFilter: BiquadFilterNode; rasp: GainNode;
   whistle: OscillatorNode; whistleGain: GainNode; gear: OscillatorNode; gearGain: GainNode;
   raspGate: GainNode; firing: OscillatorNode; tick: GainNode; tickOsc: OscillatorNode; fan: GainNode; fanFilter: BiquadFilterNode;
@@ -46,6 +48,9 @@ class EngineAudio {
     const curve = new Float32Array(512), drive = 1 + opts.profile.rasp * 7 + opts.profile.attack * 2;
     for (let i = 0; i < curve.length; i++) { const x = i / 255.5 - 1; curve[i] = (1 + drive) * x / (1 + drive * Math.abs(x)); }
     shape.curve = curve; shape.connect(low).connect(engine).connect(torque);
+    const sample = gain(0), sampleFilter = filter('lowpass', 1800);
+    sampleFilter.Q.value = 0.55;
+    sampleFilter.connect(sample).connect(torque);
     const harmonics = firingHarmonics.map(({ order, level }, i) => {
       const g = gain(level); g.connect(shape);
       return osc(i === 0 ? 'sawtooth' : 'sine', (850 / 30) * opts.profile.firingFrequencyFactor * order, g);
@@ -66,9 +71,27 @@ class EngineAudio {
     const whistleGain = gain(0); whistleGain.connect(torque); const whistle = osc('sine', 3000, whistleGain);
     const gearGain = gain(0); gearGain.connect(torque); const gear = osc('sine', 200, gearGain);
     const tick = gain(0); tick.connect(torque); const tickOsc = osc('square', (850 / 30) * opts.profile.firingFrequencyFactor, tick);
-    this.voice = { ctx, profile: opts.profile, out, torque, engine, filter: low, harmonics, intake, intakeFilter, rasp,
+    const voice: Voice = { ctx, profile: opts.profile, out, torque, engine, filter: low, harmonics, sample, sampleFilter, sampleSource: null, intake, intakeFilter, rasp,
       whistle, whistleGain, gear, gearGain, raspGate: gate, firing, tick, tickOsc, fan, fanFilter,
       wind, windFilter, tyres, tyreFilter, sources, nodes, stopping: false, cutUntil: 0 };
+    this.voice = voice;
+    void loadEngineSample(ctx, opts.profile.engineSample).then((buffer) => {
+      if (this.voice !== voice || voice.stopping) return;
+      const source = ctx.createBufferSource();
+      source.buffer = buffer;
+      source.loop = true;
+      source.playbackRate.value = clamp(this.lastRpm / opts.profile.sampleBaseRpm, 0.45, 1.3);
+      source.connect(sampleFilter);
+      source.start();
+      voice.sampleSource = source;
+      sources.add(source);
+      source.onended = () => {
+        source.disconnect();
+        sources.delete(source);
+      };
+    }).catch((error: unknown) => {
+      console.error("Unable to load the selected engine recording; continuing with the live engine voice.", error);
+    });
     this.update(850, 0.08, 0);
   }
   update(rpm: number, load: number, boost: number, speedKmh = 0): void {
@@ -84,7 +107,11 @@ class EngineAudio {
     v.harmonics.forEach((o, i) =>
       target(o.frequency, firingHz * firingHarmonics[i]!.order * (1 + depth * lope * 0.035), t),
     );
-    target(v.engine.gain, (0.28 + load * 0.36) * p.exhaustLevel * (0.75 + p.engineScale * 0.5) * (1 + depth * lope * 0.7), t);
+    const sampleMix = clamp((rpm - 1500) / 3000) * clamp(load * 1.15);
+    target(v.engine.gain, (0.28 + load * 0.36) * p.exhaustLevel * (0.75 + p.engineScale * 0.5) * (1 + depth * lope * 0.7) * (1 - sampleMix * 0.55), t);
+    target(v.sample.gain, p.sampleLevel * sampleMix * 0.42, t, 0.07);
+    target(v.sampleFilter.frequency, clamp(650 + rpm * 0.9 + load * 1800, 900, 9000), t, 0.06);
+    if (v.sampleSource) target(v.sampleSource.playbackRate, clamp(rpm / p.sampleBaseRpm, 0.45, 1.3), t, 0.06);
     target(v.filter.frequency, (380 + rpm * (0.18 + p.brightness * 0.24) + load * 700) * (1 - p.turboMuffling), t);
     target(v.intakeFilter.frequency, p.intakeHz + rpm * 0.018, t);
     target(v.intake.gain, p.intakeLevel * (0.012 + load * 0.13) + p.pipeWhoosh * load * 0.025, t);

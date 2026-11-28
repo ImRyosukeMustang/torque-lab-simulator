@@ -6,11 +6,17 @@ import { simulate } from "./engine";
 import { DEFAULT_COSMETICS, type Cosmetics } from "./cosmetics";
 import { clampTune, findPart, getPart, PARTS, partsForSlot, SLOT_ORDER, STOCK_BUILD, STOCK_TUNE } from "./parts";
 import { RESEARCH_PROJECTS, researchProjectForPart } from "./research";
+import {
+  CAREER_FEATURE_REWARDS,
+  completedCareerContracts,
+  earnedCareerFeatureRewards,
+  type CareerFeatureReward,
+} from "./careerRewards";
 import type { Build, SlotId, Tune } from "./types";
 
 export const STARTING_CREDITS = 3000;
 export const SELL_RATE = 0.6;
-export const SAVE_VERSION = 8;
+export const SAVE_VERSION = 9;
 /** Credits paid for watching a rewarded ad. */
 export const AD_REWARD = 2500;
 
@@ -21,6 +27,8 @@ export interface GameState {
   build: Build;
   tune: Tune;
   progress: Record<string, Grade>;
+  /** One-time feature-part awards earned every two first-time career contracts. */
+  careerRewards: string[];
   /** Key of the build+tune last measured on the dyno; challenges grade that run. */
   lastRunKey: string | null;
   runCount: number;
@@ -45,6 +53,7 @@ export function newGame(): GameState {
     build: { ...STOCK_BUILD },
     tune: { ...STOCK_TUNE },
     progress: {},
+    careerRewards: [],
     lastRunKey: null,
     runCount: 0,
     cosmetics: { ...DEFAULT_COSMETICS },
@@ -118,6 +127,7 @@ export type PurchaseBlock = "owned" | "locked" | "research" | "credits" | null;
 /** Parts stay out of the workshop catalogue until their career or research gate is cleared. */
 export function visiblePartsForSlot(state: GameState, slot: SlotId) {
   return partsForSlot(slot).filter((part) => {
+    if (state.owned.includes(part.id)) return true;
     if (part.unlockAfter && !state.progress[part.unlockAfter]) return false;
     const project = researchProjectForPart(part.id);
     return !project || state.researched.includes(project.id);
@@ -199,12 +209,16 @@ export interface SubmitOutcome {
   researchPoints: number;
   /** Extra credits paid for matching the client's style brief (first time only). */
   styleBonus: number;
+  /** Free part earned on every second first-time contract completion. */
+  featureReward: CareerFeatureReward | null;
+  /** Credit compensation when the milestone part was already owned. */
+  featureRewardCredits: number;
   /** Why a submission was refused before grading. */
   refused?: "no-run" | "stale-run" | "locked";
 }
 
 export function submitChallenge(state: GameState, challengeId: string): SubmitOutcome {
-  const refuse = (refused: SubmitOutcome["refused"]): SubmitOutcome => ({ state, evaluation: null, reward: 0, researchPoints: 0, styleBonus: 0, ...(refused ? { refused } : {}) });
+  const refuse = (refused: SubmitOutcome["refused"]): SubmitOutcome => ({ state, evaluation: null, reward: 0, researchPoints: 0, styleBonus: 0, featureReward: null, featureRewardCredits: 0, ...(refused ? { refused } : {}) });
   const ch = CHALLENGES.find((c) => c.id === challengeId);
   if (!ch) return refuse("locked");
   // Same rule as the career screen: open once the previous contract is graded, and always open once graded.
@@ -212,25 +226,40 @@ export function submitChallenge(state: GameState, challengeId: string): SubmitOu
   if (!state.lastRunKey) return refuse("no-run");
   if (state.lastRunKey !== configKey(state.build, state.tune)) return refuse("stale-run");
   const evaluation = evaluateChallenge(ch, state.build, simulate(state.build, state.tune), state.cosmetics);
-  if (!evaluation.grade) return { state, evaluation, reward: 0, researchPoints: 0, styleBonus: 0 };
+  if (!evaluation.grade) return { state, evaluation, reward: 0, researchPoints: 0, styleBonus: 0, featureReward: null, featureRewardCredits: 0 };
   const prev = state.progress[ch.id] ?? null;
-  const reward = rewardFor(ch, evaluation.grade, prev);
+  const contractCredits = rewardFor(ch, evaluation.grade, prev);
   const researchPoints = Math.max(0, GRADE_RANK[evaluation.grade] - (prev ? GRADE_RANK[prev] : 0));
   const best = prev && GRADE_RANK[prev] >= GRADE_RANK[evaluation.grade] ? prev : evaluation.grade;
   const payStyle = Boolean(ch.style && evaluation.stylePassed && !state.styleBonusPaid.includes(ch.id));
   const styleBonus = payStyle && ch.style ? ch.style.bonus : 0;
+  const completedContracts = completedCareerContracts(state.progress);
+  const milestoneReward = prev === null && (completedContracts + 1) % 2 === 0
+    ? CAREER_FEATURE_REWARDS.find((entry) => entry.contractLevel === completedContracts + 1) ?? null
+    : null;
+  const alreadyClaimed = milestoneReward !== null && state.careerRewards.includes(milestoneReward.id);
+  const featureReward = alreadyClaimed ? null : milestoneReward;
+  const rewardedPart = featureReward ? findPart(featureReward.partId)! : null;
+  const featureRewardCredits = rewardedPart && state.owned.includes(rewardedPart.id) ? rewardedPart.price : 0;
+  const owned = rewardedPart && !state.owned.includes(rewardedPart.id)
+    ? [...state.owned, rewardedPart.id]
+    : state.owned;
   return {
     state: {
       ...state,
-      credits: state.credits + reward + styleBonus,
+      credits: state.credits + contractCredits + styleBonus + featureRewardCredits,
+      owned,
       progress: { ...state.progress, [ch.id]: best },
+      careerRewards: featureReward ? [...state.careerRewards, featureReward.id] : state.careerRewards,
       researchPoints: state.researchPoints + researchPoints,
       styleBonusPaid: payStyle ? [...state.styleBonusPaid, ch.id] : state.styleBonusPaid,
     },
     evaluation,
-    reward,
+    reward: contractCredits,
     researchPoints,
     styleBonus,
+    featureReward,
+    featureRewardCredits,
   };
 }
 
@@ -251,7 +280,7 @@ const cosmeticsSchema = z.object({
 // Accepts v1 saves (7 engine slots, no cosmetics) and v2 saves (AFR tune) and migrates them on load.
 // v4 added gear ratios and final drive; older tunes get the fitted gearbox's defaults on load.
 // v6 adds researched blueprints; older contract grades are converted into research points.
-// v7 adds customizable underglow; v8 adds the engine slot and defaults old builds to the stock engine.
+// v7 adds customizable underglow; v8 adds engine swaps; v9 adds two-contract feature rewards.
 const gearFields = { gearRatios: z.array(z.number()).optional(), finalDrive: z.number().optional() };
 const tuneSchema = z.union([
   z.object({ boostTarget: z.number(), lambdaTarget: z.number(), timingOffset: z.number(), revLimit: z.number(), ...gearFields }),
@@ -261,7 +290,7 @@ const tuneSchema = z.union([
     .transform(({ afrTarget, ...t }) => ({ ...t, lambdaTarget: Math.round((afrTarget / 14.7) * 100) / 100 })),
 ]);
 const saveSchema = z.object({
-  version: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4), z.literal(5), z.literal(6), z.literal(7), z.literal(SAVE_VERSION)]),
+  version: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4), z.literal(5), z.literal(6), z.literal(7), z.literal(8), z.literal(SAVE_VERSION)]),
   credits: z.number().finite().min(0),
   owned: z.array(z.string()),
   build: z.record(z.string(), z.string()),
@@ -271,6 +300,7 @@ const saveSchema = z.object({
   runCount: z.number().int().min(0),
   cosmetics: z.unknown().optional(),
   styleBonusPaid: z.array(z.string()).optional(),
+  careerRewards: z.array(z.string()).optional(),
   raceWins: z.record(z.string(), z.number().int().min(0)).optional(),
   raceBest: z.record(z.string(), z.number().positive()).optional(),
   researchPoints: z.number().int().min(0).optional(),
@@ -287,7 +317,22 @@ export function deserialize(raw: string | null): GameState {
   if (!raw) return newGame();
   try {
     const parsed = saveSchema.parse(JSON.parse(raw));
-    const owned = Array.from(new Set([...newGame().owned, ...parsed.owned.filter((id) => findPart(id))]));
+    const migratedRewards = parsed.version < SAVE_VERSION
+      ? earnedCareerFeatureRewards(completedCareerContracts(parsed.progress))
+      : [];
+    const careerRewards = Array.from(new Set([
+      ...(parsed.careerRewards ?? []),
+      ...migratedRewards.map((reward) => reward.id),
+    ])).filter((id) => CAREER_FEATURE_REWARDS.some((reward) => reward.id === id));
+    const rewardedParts = careerRewards.flatMap((id) => {
+      const reward = CAREER_FEATURE_REWARDS.find((entry) => entry.id === id);
+      return reward ? [reward.partId] : [];
+    });
+    const owned = Array.from(new Set([
+      ...newGame().owned,
+      ...parsed.owned.filter((id) => findPart(id)),
+      ...rewardedParts,
+    ]));
     const build = { ...STOCK_BUILD };
     for (const s of SLOT_ORDER) {
       const id = parsed.build[s];
@@ -316,6 +361,7 @@ export function deserialize(raw: string | null): GameState {
       build,
       tune,
       progress: parsed.progress,
+      careerRewards,
       lastRunKey,
       runCount: parsed.runCount,
       cosmetics: cos.success ? cos.data : { ...DEFAULT_COSMETICS },

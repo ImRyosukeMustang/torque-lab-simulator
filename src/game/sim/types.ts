@@ -215,7 +215,7 @@ export interface WingPart extends BodyworkBase {
 export interface BodyPart extends BodyworkBase {
   slot: "body";
   style: "stock" | "overfender" | "widebody";
-  shape: "coupe" | "sedan" | "hatchback";
+  shape: "coupe" | "sedan" | "hatchback" | "light-coupe" | "four-door-coupe";
   tyreWidthMm: number;
   /** Extra half-track width (m) the wider arches allow. */
   trackDelta: number;

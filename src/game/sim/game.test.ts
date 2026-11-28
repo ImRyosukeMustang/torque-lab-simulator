@@ -4,6 +4,7 @@ import { simulate } from "./engine";
 import { buyPart, configKey, deserialize, SAVE_VERSION, installPart, newGame, purchaseBlock, recordDynoRun, researchProjectBlock, sellPart, serialize, setCosmetics, setTune, startResearch, STARTING_CREDITS, submitChallenge, visiblePartsForSlot, type GameState } from "./economy";
 import { clampTune, findPart, getPart, STOCK_BUILD, STOCK_TUNE } from "./parts";
 import { RESEARCH_PROJECTS } from "./research";
+import { careerFeatureRewardAtLevel } from "./careerRewards";
 import type { Build, Tune } from "./types";
 
 const ch = (id: string) => CHALLENGES.find((c) => c.id === id)!;
@@ -117,6 +118,70 @@ describe("economy and saves", () => {
     expect(out.researchPoints).toBe(GRADE_RANK[out.evaluation!.grade!]);
     expect(out.state.researchPoints).toBe(out.researchPoints);
     expect(submitChallenge(out.state, "c1")).toMatchObject({ reward: 0, researchPoints: 0 });
+  });
+
+  it("awards a free feature part on every second first-time contract completion", () => {
+    const solution = SOLUTIONS["c12"]!;
+    const build = { ...STOCK_BUILD, ...solution.build };
+    const tune = tuneFor(build, solution.tune);
+    const start = newGame();
+    const state: GameState = {
+      ...start,
+      progress: { c1: "bronze" },
+      owned: [...start.owned, ...Object.values(solution.build)],
+      build,
+      tune,
+      lastRunKey: configKey(build, tune),
+    };
+
+    const outcome = submitChallenge(state, "c12");
+    const feature = careerFeatureRewardAtLevel(2)!;
+
+    expect(outcome.evaluation?.grade).not.toBeNull();
+    expect(outcome.featureReward).toEqual(feature);
+    expect(outcome.state.careerRewards).toContain(feature.id);
+    expect(outcome.state.owned).toContain(feature.partId);
+    expect(visiblePartsForSlot(outcome.state, "intake").some((part) => part.id === feature.partId)).toBe(true);
+    expect(installPart(outcome.state, feature.partId).build.intake).toBe(feature.partId);
+    expect(outcome.state.progress["c12"]).toBeDefined();
+  });
+
+  it("pays the part value when a milestone reward is already owned", () => {
+    const solution = SOLUTIONS["c12"]!;
+    const build = { ...STOCK_BUILD, ...solution.build };
+    const tune = tuneFor(build, solution.tune);
+    const start = newGame();
+    const reward = careerFeatureRewardAtLevel(2)!;
+    const state: GameState = {
+      ...start,
+      progress: { c1: "bronze" },
+      owned: [...start.owned, ...Object.values(solution.build), reward.partId],
+      build,
+      tune,
+      lastRunKey: configKey(build, tune),
+    };
+
+    const outcome = submitChallenge(state, "c12");
+
+    expect(outcome.featureReward).toEqual(reward);
+    expect(outcome.featureRewardCredits).toBe(findPart(reward.partId)!.price);
+    expect(outcome.state.credits).toBe(state.credits + outcome.reward + outcome.featureRewardCredits);
+  });
+
+  it("migrates completed-contract feature rewards into older saves", () => {
+    const legacy = {
+      ...newGame(),
+      version: 8,
+      progress: { c1: "bronze", c12: "silver" },
+    };
+
+    const migrated = deserialize(JSON.stringify(legacy));
+    const feature = careerFeatureRewardAtLevel(2)!;
+
+    expect(migrated.version).toBe(SAVE_VERSION);
+    expect(migrated.careerRewards).toContain(feature.id);
+    expect(migrated.owned).toContain(feature.partId);
+    expect(deserialize(serialize(migrated)).careerRewards).toContain(feature.id);
   });
 
   it("later challenges are locked until the previous one is completed", () => {

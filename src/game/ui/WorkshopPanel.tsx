@@ -1,10 +1,11 @@
-import { Lock, Check, ShoppingCart, Wrench, ArrowRight } from "lucide-react";
+import { Lock, Check, ShoppingCart, Wrench, ArrowRight, Gift } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { CHALLENGES } from "../sim/challenges";
+import { completedCareerContracts, nextCareerFeatureReward } from "../sim/careerRewards";
 import { purchaseBlock, SELL_RATE, visiblePartsForSlot } from "../sim/economy";
-import { BODY_SLOTS, DRIVETRAIN_SLOTS, ENGINE_SLOTS, getPart, SLOT_HELP, SLOT_LABEL } from "../sim/parts";
+import { BODY_SLOTS, DRIVETRAIN_SLOTS, ENGINE_SLOTS, findPart, getPart, SLOT_HELP, SLOT_LABEL } from "../sim/parts";
 import { researchProjectForPart } from "../sim/research";
 import { useGame } from "../store";
 import { localizeText } from "../units";
@@ -16,8 +17,12 @@ function ActiveContract() {
   const progress = useGame((s) => s.game.progress);
   const setTab = useGame((s) => s.setTab);
   const units = useGame((s) => s.settings.units);
+  const completed = completedCareerContracts(progress);
   const next = CHALLENGES.find((c) => !progress[c.id]);
   if (!next) return null;
+  const feature = nextCareerFeatureReward(completed);
+  const featurePart = feature ? findPart(feature.partId) : undefined;
+  const contractsToFeature = feature ? feature.contractLevel - completed : 0;
   return (
     <button onClick={() => setTab("career")} className="group w-full rounded-md border border-primary/40 bg-primary/10 p-3 text-left transition-colors hover:bg-primary/15">
       <div className="flex items-center justify-between">
@@ -40,6 +45,16 @@ function ActiveContract() {
           .map((x) => localizeText(String(x), units))
           .join("  ·  ")}
       </div>
+      {feature && featurePart && (
+        <div className="mt-2 flex items-center gap-2 border-t border-primary/20 pt-2 text-[11px]">
+          <Gift className="h-3.5 w-3.5 shrink-0 text-primary" />
+          <span>
+            {contractsToFeature === 1
+              ? `Finish this contract for a free ${featurePart.name}.`
+              : `${contractsToFeature} contracts until your free ${featurePart.name}.`}
+          </span>
+        </div>
+      )}
     </button>
   );
 }
@@ -73,7 +88,12 @@ export function WorkshopPanel() {
   return (
     <div className="space-y-4 p-4">
       <section className="space-y-2 rounded-xl border border-border bg-card/70 p-3">
-        <h2 className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Select a system</h2>
+        <div>
+          <h2 className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Your build · 18 customizable systems</h2>
+          <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+            Swap engines, body styles and aero; choose front-, rear- or all-wheel drive. Every fitted part changes the car or its simulated performance.
+          </p>
+        </div>
         {groups.map(([title, slots]) => (
           <div key={title} className="space-y-1">
             <h3 className="text-[9px] font-semibold uppercase tracking-[0.16em] text-muted-foreground/75">{title}</h3>

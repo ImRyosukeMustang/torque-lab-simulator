@@ -187,3 +187,23 @@
 .animate-pop-in {
   animation: pop-in 0.35s ease-out both;
 }
+@keyframes photo-finish-reveal {
+  0% {
+    transform: scale(0.92);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+.animate-photo-finish {
+  animation: photo-finish-reveal 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.photo-finish-stripe {
+  background-image: repeating-linear-gradient(
+    90deg,
+    var(--foreground) 0 12px,
+    var(--background) 12px 24px
+  );
+}

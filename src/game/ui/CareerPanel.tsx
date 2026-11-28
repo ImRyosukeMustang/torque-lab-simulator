@@ -1,4 +1,4 @@
-import { Check, ChevronDown, CircleHelp, Lock, Medal, X, Send, Paintbrush } from "lucide-react";
+import { Check, ChevronDown, CircleHelp, Gift, Lock, Medal, X, Send, Paintbrush } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ import { configKey, researchProjectBlock } from "../sim/economy";
 import { findPart, getPart, SLOT_LABEL, SLOT_ORDER, STOCK_BUILD } from "../sim/parts";
 import { SOLUTIONS } from "../sim/challengeSolutions";
 import { RESEARCH_PROJECTS } from "../sim/research";
+import { careerFeatureRewardAtLevel, completedCareerContracts, nextCareerFeatureReward } from "../sim/careerRewards";
 import { useGame } from "../store";
 import { fmtCredits } from "./format";
 
@@ -39,7 +40,10 @@ export function CareerPanel() {
     (g) => [g, Object.values(game.progress).filter((x) => x === g).length] as const,
   );
   const fresh = Boolean(lastResult && game.lastRunKey === configKey(game.build, game.tune));
-  const completed = Object.keys(game.progress).length;
+  const completed = completedCareerContracts(game.progress);
+  const nextFeature = nextCareerFeatureReward(completed);
+  const nextFeaturePart = nextFeature ? findPart(nextFeature.partId) : undefined;
+  const contractsToFeature = nextFeature ? nextFeature.contractLevel - completed : 0;
 
   const onSubmit = (id: string) => {
     const out = submit(id);
@@ -65,6 +69,12 @@ export function CareerPanel() {
         : "No extra payment for the grade: you already hold it or better.",
       out.researchPoints > 0 ? `Earned ${out.researchPoints} R&D ${out.researchPoints === 1 ? "point" : "points"}.` : "",
       out.styleBonus > 0 ? `Style brief matched: +${fmtCredits(out.styleBonus)}.` : "",
+      out.featureReward
+        ? `New career feature: ${findPart(out.featureReward.partId)?.name ?? out.featureReward.partId} is now yours for free. Install it in the Workshop.`
+        : "",
+      out.featureRewardCredits > 0
+        ? `Your milestone part was already owned, so you received ${fmtCredits(out.featureRewardCredits)} instead.`
+        : "",
     ];
     toast.success(`${gradeLabel[out.evaluation.grade]} grade`, {
       description: paid.filter(Boolean).join(" "),
@@ -87,6 +97,24 @@ export function CareerPanel() {
           ))}
         </div>
       </div>
+      {nextFeature && nextFeaturePart && (
+        <section className="flex items-start gap-3 rounded-lg border border-primary/45 bg-gradient-to-r from-primary/15 via-primary/5 to-card p-3 shadow-glow">
+          <Gift className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+          <div>
+            <h3 className="text-[10px] font-semibold uppercase tracking-[0.16em] text-primary">
+              Next free garage feature · contract {nextFeature.contractLevel}
+            </h3>
+            <p className="mt-0.5 text-sm font-semibold">
+              {contractsToFeature === 1
+                ? `Finish your next contract to earn ${nextFeaturePart.name}.`
+                : `Finish ${contractsToFeature} more contracts to earn ${nextFeaturePart.name}.`}
+            </p>
+            <p className="mt-0.5 text-[11px] text-muted-foreground">
+              A permanent {SLOT_LABEL[nextFeaturePart.slot]} part, free to install on your car.
+            </p>
+          </div>
+        </section>
+      )}
       <section className="space-y-2 rounded-md border border-border bg-card p-3">
         <div className="flex items-baseline justify-between gap-2">
           <div>
@@ -174,6 +202,8 @@ export function CareerPanel() {
                     : null;
                 const styleChecks = ev?.styleChecks ?? [];
                 const stylePaid = game.styleBonusPaid.includes(ch.id);
+                const featureReward = careerFeatureRewardAtLevel(ch.level);
+                const featurePart = featureReward ? findPart(featureReward.partId) : undefined;
                 const solution = SOLUTIONS[ch.id]!;
                 return (
                   <div
@@ -217,6 +247,15 @@ export function CareerPanel() {
                     {open && (
                       <div className="space-y-3 border-t border-border p-3">
                         <p className="text-sm leading-relaxed">{ch.brief}</p>
+                        {featureReward && featurePart && !game.careerRewards.includes(featureReward.id) && (
+                          <div className="flex items-start gap-2 rounded-md border border-primary/40 bg-primary/10 p-2.5">
+                            <Gift className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                            <p className="text-xs">
+                              <span className="font-semibold text-primary">Complete this contract to earn a free part: </span>
+                              {featurePart.name}. Install it from the Workshop after grading.
+                            </p>
+                          </div>
+                        )}
                         <Button
                           size="sm"
                           variant="outline"
