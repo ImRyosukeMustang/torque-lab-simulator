@@ -90,6 +90,37 @@ function hoodShape() {
 }
 
 function greenhouseShape(shape: BodyPart["shape"]) {
+  if (shape === "executive-sedan") {
+    const s = new THREE.Shape();
+    s.moveTo(0.52, 0.96);
+    s.lineTo(0.2, 1.29);
+    s.quadraticCurveTo(0.12, 1.34, -0.84, 1.34);
+    s.quadraticCurveTo(-1.06, 1.34, -1.16, 1.25);
+    s.lineTo(-1.51, 0.99);
+    s.lineTo(-1.51, 0.95);
+    s.lineTo(0.52, 0.95);
+    return s;
+  }
+  if (shape === "rotary-fastback") {
+    const s = new THREE.Shape();
+    s.moveTo(0.52, 0.96);
+    s.quadraticCurveTo(0.27, 1.19, 0.02, 1.27);
+    s.quadraticCurveTo(-0.45, 1.31, -0.88, 1.27);
+    s.quadraticCurveTo(-1.4, 1.16, -1.84, 1.0);
+    s.lineTo(-1.84, 0.95);
+    s.lineTo(0.52, 0.95);
+    return s;
+  }
+  if (shape === "roadster") {
+    const s = new THREE.Shape();
+    s.moveTo(0.52, 0.96);
+    s.quadraticCurveTo(0.3, 1.2, 0.05, 1.28);
+    s.quadraticCurveTo(-0.37, 1.32, -0.77, 1.27);
+    s.quadraticCurveTo(-1.04, 1.19, -1.24, 1.02);
+    s.lineTo(-1.24, 0.95);
+    s.lineTo(0.52, 0.95);
+    return s;
+  }
   if (shape === "light-coupe") {
     const s = new THREE.Shape();
     s.moveTo(0.52, 0.96);
@@ -142,6 +173,33 @@ function greenhouseShape(shape: BodyPart["shape"]) {
 
 function roofShape(shape: BodyPart["shape"]) {
   const s = new THREE.Shape();
+  if (shape === "executive-sedan") {
+    s.moveTo(0.18, 1.36);
+    s.lineTo(-0.86, 1.36);
+    s.quadraticCurveTo(-1.04, 1.36, -1.18, 1.28);
+    s.lineTo(-1.16, 1.25);
+    s.quadraticCurveTo(-1.02, 1.32, -0.86, 1.32);
+    s.lineTo(0.18, 1.32);
+    return s;
+  }
+  if (shape === "rotary-fastback") {
+    s.moveTo(0.02, 1.31);
+    s.quadraticCurveTo(-0.43, 1.35, -0.88, 1.31);
+    s.quadraticCurveTo(-1.38, 1.2, -1.83, 1.04);
+    s.lineTo(-1.84, 1.01);
+    s.quadraticCurveTo(-1.34, 1.16, -0.87, 1.28);
+    s.quadraticCurveTo(-0.42, 1.32, 0.02, 1.28);
+    return s;
+  }
+  if (shape === "roadster") {
+    s.moveTo(0.06, 1.32);
+    s.quadraticCurveTo(-0.35, 1.36, -0.76, 1.31);
+    s.quadraticCurveTo(-1.03, 1.24, -1.22, 1.07);
+    s.lineTo(-1.24, 1.04);
+    s.quadraticCurveTo(-1.02, 1.2, -0.75, 1.28);
+    s.quadraticCurveTo(-0.34, 1.32, 0.06, 1.28);
+    return s;
+  }
   if (shape === "light-coupe") {
     s.moveTo(-0.03, 1.285);
     s.quadraticCurveTo(-0.62, 1.335, -1.1, 1.29);
@@ -565,7 +623,7 @@ function BodyDetails({ shape }: { shape: BodyPart["shape"] }) {
           <mesh position={[-0.66, 0.62, 0.9218]} material={seam}>
             <planeGeometry args={[0.006, 0.64]} />
           </mesh>
-          {(shape === "sedan" || shape === "four-door-coupe") && (
+          {(shape === "sedan" || shape === "four-door-coupe" || shape === "executive-sedan") && (
             <mesh position={[-1.15, 0.62, 0.9218]} material={seam}>
               <planeGeometry args={[0.006, 0.64]} />
             </mesh>

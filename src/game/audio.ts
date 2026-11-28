@@ -7,6 +7,7 @@ interface Voice {
   ctx: AudioContext; profile: SoundProfile; out: GainNode; torque: GainNode;
   engine: GainNode; filter: BiquadFilterNode; harmonics: OscillatorNode[];
   sample: GainNode; sampleFilter: BiquadFilterNode; sampleSource: AudioBufferSourceNode | null;
+  sampleBaseRpm: number;
   intake: GainNode; intakeFilter: BiquadFilterNode; rasp: GainNode;
   whistle: OscillatorNode; whistleGain: GainNode; gear: OscillatorNode; gearGain: GainNode;
   raspGate: GainNode; firing: OscillatorNode; tick: GainNode; tickOsc: OscillatorNode; fan: GainNode; fanFilter: BiquadFilterNode;
@@ -15,6 +16,8 @@ interface Voice {
 }
 const clamp = (v: number, lo = 0, hi = 1) => Number.isFinite(v) ? Math.min(hi, Math.max(lo, v)) : lo;
 const target = (p: AudioParam, v: number, at: number, tau = 0.025) => p.setTargetAtTime(v, at, tau);
+export const engineSamplePlaybackRate = (rpm: number, baseRpm: number) =>
+  clamp(rpm / Math.max(1, baseRpm), 0.12, 2.6);
 const firingHarmonics = [
   { order: 1, level: 0.26 },
   { order: 2, level: 0.13 },
@@ -34,7 +37,7 @@ class EngineAudio {
     this.kill();
     const ctx = getAudioContext(), bus = getMasterBus();
     if (!ctx || !bus) return;
-    this.volume = clamp(opts.volume); this.lastBoost = 0; this.lastRpm = 850;
+    this.volume = clamp(opts.volume); this.lastBoost = 0; this.lastRpm = opts.profile.idleRpm;
     const nodes: AudioNode[] = [], sources = new Set<Source>();
     const gain = (value: number) => { const g = ctx.createGain(); g.gain.value = value; nodes.push(g); return g; };
     const filter = (type: BiquadFilterType, hz: number) => { const f = ctx.createBiquadFilter(); f.type = type; f.frequency.value = hz; nodes.push(f); return f; };
@@ -53,7 +56,7 @@ class EngineAudio {
     sampleFilter.connect(sample).connect(torque);
     const harmonics = firingHarmonics.map(({ order, level }, i) => {
       const g = gain(level); g.connect(shape);
-      return osc(i === 0 ? 'sawtooth' : 'sine', (850 / 30) * opts.profile.firingFrequencyFactor * order, g);
+      return osc(i === 0 ? 'sawtooth' : 'sine', (opts.profile.idleRpm / 30) * opts.profile.firingFrequencyFactor * order, g);
     });
     const intake = gain(0), intakeFilter = filter('bandpass', opts.profile.intakeHz);
     const rasp = gain(0), raspFilter = filter('bandpass', 3200);
@@ -67,20 +70,22 @@ class EngineAudio {
     noise.connect(windFilter).connect(wind).connect(out);
     noise.connect(tyreFilter).connect(tyres).connect(out);
     // Audio-rate firing gate for rasp and injector/piston ticks, without per-frame source creation.
-    const gate = gain(0); gate.connect(rasp.gain); const firing = osc('sine', (850 / 30) * opts.profile.firingFrequencyFactor, gate);
+    const gate = gain(0); gate.connect(rasp.gain); const firing = osc('sine', (opts.profile.idleRpm / 30) * opts.profile.firingFrequencyFactor, gate);
     const whistleGain = gain(0); whistleGain.connect(torque); const whistle = osc('sine', 3000, whistleGain);
     const gearGain = gain(0); gearGain.connect(torque); const gear = osc('sine', 200, gearGain);
-    const tick = gain(0); tick.connect(torque); const tickOsc = osc('square', (850 / 30) * opts.profile.firingFrequencyFactor, tick);
-    const voice: Voice = { ctx, profile: opts.profile, out, torque, engine, filter: low, harmonics, sample, sampleFilter, sampleSource: null, intake, intakeFilter, rasp,
+    const tick = gain(0); tick.connect(torque); const tickOsc = osc('square', (opts.profile.idleRpm / 30) * opts.profile.firingFrequencyFactor, tick);
+    const voice: Voice = { ctx, profile: opts.profile, out, torque, engine, filter: low, harmonics, sample, sampleFilter, sampleSource: null,
+      sampleBaseRpm: opts.profile.sampleBaseRpm, intake, intakeFilter, rasp,
       whistle, whistleGain, gear, gearGain, raspGate: gate, firing, tick, tickOsc, fan, fanFilter,
       wind, windFilter, tyres, tyreFilter, sources, nodes, stopping: false, cutUntil: 0 };
     this.voice = voice;
     void loadEngineSample(ctx, opts.profile.engineSample).then((buffer) => {
       if (this.voice !== voice || voice.stopping) return;
       const source = ctx.createBufferSource();
-      source.buffer = buffer;
+      source.buffer = buffer.buffer;
       source.loop = true;
-      source.playbackRate.value = clamp(this.lastRpm / opts.profile.sampleBaseRpm, 0.45, 1.3);
+      voice.sampleBaseRpm = buffer.sourceRpm;
+      source.playbackRate.value = engineSamplePlaybackRate(this.lastRpm, voice.sampleBaseRpm);
       source.connect(sampleFilter);
       source.start();
       voice.sampleSource = source;
@@ -92,7 +97,7 @@ class EngineAudio {
     }).catch((error: unknown) => {
       console.error("Unable to load the selected engine recording; continuing with the live engine voice.", error);
     });
-    this.update(850, 0.08, 0);
+    this.update(opts.profile.idleRpm, 0.08, 0);
   }
   update(rpm: number, load: number, boost: number, speedKmh = 0): void {
     const v = this.voice; if (!v || v.stopping) return;
@@ -107,18 +112,19 @@ class EngineAudio {
     v.harmonics.forEach((o, i) =>
       target(o.frequency, firingHz * firingHarmonics[i]!.order * (1 + depth * lope * 0.035), t),
     );
-    const sampleMix = clamp((rpm - 1500) / 3000) * clamp(load * 1.15);
+    const rpmSampleBlend = clamp((rpm - 700) / 2500);
+    const sampleMix = (0.3 + rpmSampleBlend * 0.7) * (0.45 + load * 0.55);
     target(v.engine.gain, (0.28 + load * 0.36) * p.exhaustLevel * (0.75 + p.engineScale * 0.5) * (1 + depth * lope * 0.7) * (1 - sampleMix * 0.55), t);
     target(v.sample.gain, p.sampleLevel * sampleMix * 0.42, t, 0.07);
     target(v.sampleFilter.frequency, clamp(650 + rpm * 0.9 + load * 1800, 900, 9000), t, 0.06);
-    if (v.sampleSource) target(v.sampleSource.playbackRate, clamp(rpm / p.sampleBaseRpm, 0.45, 1.3), t, 0.06);
+    if (v.sampleSource) target(v.sampleSource.playbackRate, engineSamplePlaybackRate(rpm, v.sampleBaseRpm), t, 0.025);
     target(v.filter.frequency, (380 + rpm * (0.18 + p.brightness * 0.24) + load * 700) * (1 - p.turboMuffling), t);
     target(v.intakeFilter.frequency, p.intakeHz + rpm * 0.018, t);
-    target(v.intake.gain, p.intakeLevel * (0.012 + load * 0.13) + p.pipeWhoosh * load * 0.025, t);
+    target(v.intake.gain, p.intakeLevel * (0.012 + load * 0.13) + p.pipeWhoosh * load * 0.055, t);
     target(v.rasp.gain, p.rasp * load * (0.035 + p.popSharpness * 0.01), t);
     target(v.raspGate.gain, p.rasp * load * 0.025, t); target(v.firing.frequency, firingHz, t);
     target(v.whistle.frequency, clamp(p.whistleHz * (0.65 + boost * 0.3 + rpm / 18000), 2000, 9000), t, 0.08);
-    target(v.whistleGain.gain, p.whistleLevel * boost * 0.055 * (1 + p.flutter * Math.sin(t * 39) * 0.18), t, 0.06);
+    target(v.whistleGain.gain, p.whistleLevel * boost * 0.12 * (1 + p.flutter * Math.sin(t * 39) * 0.35), t, 0.06);
     target(v.gear.frequency, rpm / 60 * p.gearPitchFactor, t);
     target(v.gearGain.gain, p.gearWhine * (0.015 + load * 0.06) + p.diffChatter * load * 0.008, t);
     target(v.tickOsc.frequency, firingHz, t);
@@ -173,7 +179,7 @@ class EngineAudio {
     this.bov(v, v.ctx.currentTime);
     if (v.profile.crackle > 0.1) this.burst(v, v.ctx.currentTime + 0.08, 800 + v.profile.popSharpness * 2000, 0.13, v.profile.crackle * 0.09);
     v.harmonics.forEach((o, i) =>
-      target(o.frequency, (850 / 30) * v.profile.firingFrequencyFactor * firingHarmonics[i]!.order, v.ctx.currentTime, 0.13),
+      target(o.frequency, (v.profile.idleRpm / 30) * v.profile.firingFrequencyFactor * firingHarmonics[i]!.order, v.ctx.currentTime, 0.13),
     );
     target(v.whistleGain.gain, 0, v.ctx.currentTime, 0.07);
     target(v.fan.gain, v.profile.fanLevel * 0.025, v.ctx.currentTime, 0.05);
@@ -207,7 +213,7 @@ class EngineAudio {
       if (this.voice !== v) return;
       const s = v.ctx.currentTime - start;
       if (s > 3.5) { this.stop(); return; }
-      let rpm = s < 0.4 ? 200 + s * 1600 : 850, load = 0.07;
+      let rpm = s < 0.4 ? 200 + s * ((v.profile.idleRpm - 200) / 0.4) : v.profile.idleRpm, load = 0.07;
       if (s > 1.55 && s < 2.25) { const x = (s - 1.55) / 0.7; rpm += Math.sin(x * Math.PI) * 4600; load = Math.sin(x * Math.PI) * 0.9; }
       if (s > 2.35 && s < 3.1) { const x = (s - 2.35) / 0.75; rpm += Math.sin(x * Math.PI) * 5100; load = Math.sin(x * Math.PI) * 0.95; }
       if ((previous < 1.96 && s >= 1.96) || (previous < 2.78 && s >= 2.78)) {

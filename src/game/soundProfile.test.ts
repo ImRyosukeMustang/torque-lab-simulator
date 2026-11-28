@@ -17,13 +17,16 @@ describe('physical sound profiles', () => {
     const turbos = partsForSlot('turbo').filter(p => p.slot === 'turbo' && p.maximumFlow > 0)
       .sort((a, b) => a.slot === 'turbo' && b.slot === 'turbo' ? a.maximumFlow - b.maximumFlow : 0);
     for (let i = 1; i < turbos.length; i++) expect(swap('turbo', turbos[i]!.id).whistleHz).toBeLessThan(swap('turbo', turbos[i - 1]!.id).whistleHz);
+    for (const turbo of turbos) expect(swap('turbo', turbo.id).whistleLevel).toBeGreaterThan(0);
+    expect(swap('turbo', 'turbo-none').whistleLevel).toBe(0);
   });
   it.each([
-    ["engine-i4-20", "inline-turbo"],
-    ["engine-v6-32", "v6-full-throttle"],
-    ["engine-v8-40", "v-engine-collection"],
-  ] as const)("selects the supplied %s recording for that engine", (engineId, sample) => {
+    ["engine-i4-20", "inline-turbo", 850],
+    ["engine-v6-32", "v6-full-throttle", 800],
+    ["engine-v8-40", "v-engine-collection", 800],
+  ] as const)("selects the supplied %s recording and idle speed", (engineId, sample, idleRpm) => {
     expect(swap("engine", engineId).engineSample).toBe(sample);
+    expect(swap("engine", engineId).idleRpm).toBe(idleRpm);
   });
   it('gives race cams more lope', () => expect(swap('camshaft', 'cam-race').lopeDepth).toBeGreaterThan(stock.lopeDepth));
   it.each(['exh-3in', 'exh-header'])('gives %s more rasp', id => expect(swap('exhaust', id).rasp).toBeGreaterThan(stock.rasp));

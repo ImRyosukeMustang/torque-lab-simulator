@@ -33,7 +33,7 @@ export interface Kit {
   aero: "stock" | "lip" | "gt";
   wing: "ducktail" | "lip" | "gt" | "swan";
   body: "stock" | "overfender" | "widebody";
-  shape: "coupe" | "sedan" | "hatchback" | "light-coupe" | "four-door-coupe";
+  shape: "coupe" | "sedan" | "hatchback" | "light-coupe" | "four-door-coupe" | "executive-sedan" | "rotary-fastback" | "roadster";
 }
 
 export interface CarDraw {
@@ -393,6 +393,18 @@ function drawCar(ctx: CanvasRenderingContext2D, cx: number, ground: number, S: n
   if (car.kit.shape === "light-coupe") {
     ctx.quadraticCurveTo(X(-0.55), Y(1.29), X(-0.98), Y(1.24));
     ctx.quadraticCurveTo(X(-1.4), Y(1.16), X(-1.72), Y(1.0));
+  } else if (car.kit.shape === "executive-sedan") {
+    ctx.quadraticCurveTo(X(0.08), Y(1.34), X(-0.35), Y(1.34));
+    ctx.lineTo(X(-0.88), Y(1.34));
+    ctx.quadraticCurveTo(X(-1.1), Y(1.33), X(-1.2), Y(1.24));
+    ctx.lineTo(X(-1.5), Y(0.99));
+  } else if (car.kit.shape === "rotary-fastback") {
+    ctx.quadraticCurveTo(X(-0.42), Y(1.3), X(-0.86), Y(1.27));
+    ctx.quadraticCurveTo(X(-1.4), Y(1.16), X(-1.84), Y(1.0));
+  } else if (car.kit.shape === "roadster") {
+    ctx.quadraticCurveTo(X(-0.14), Y(1.32), X(-0.48), Y(1.32));
+    ctx.quadraticCurveTo(X(-0.86), Y(1.29), X(-1.08), Y(1.15));
+    ctx.lineTo(X(-1.32), Y(0.99));
   } else if (car.kit.shape === "four-door-coupe") {
     ctx.quadraticCurveTo(X(-0.52), Y(1.33), X(-0.96), Y(1.27));
     ctx.quadraticCurveTo(X(-1.35), Y(1.2), X(-1.68), Y(1.04));
@@ -445,6 +457,18 @@ function drawCar(ctx: CanvasRenderingContext2D, cx: number, ground: number, S: n
   if (car.kit.shape === "light-coupe") {
     ctx.quadraticCurveTo(X(-0.55), Y(1.25), X(-0.98), Y(1.2));
     ctx.quadraticCurveTo(X(-1.4), Y(1.12), X(-1.68), Y(0.99));
+  } else if (car.kit.shape === "executive-sedan") {
+    ctx.quadraticCurveTo(X(0.08), Y(1.3), X(-0.35), Y(1.3));
+    ctx.lineTo(X(-0.86), Y(1.3));
+    ctx.quadraticCurveTo(X(-1.06), Y(1.29), X(-1.16), Y(1.2));
+    ctx.lineTo(X(-1.42), Y(0.99));
+  } else if (car.kit.shape === "rotary-fastback") {
+    ctx.quadraticCurveTo(X(-0.42), Y(1.26), X(-0.86), Y(1.23));
+    ctx.quadraticCurveTo(X(-1.38), Y(1.13), X(-1.76), Y(0.99));
+  } else if (car.kit.shape === "roadster") {
+    ctx.quadraticCurveTo(X(-0.14), Y(1.28), X(-0.48), Y(1.28));
+    ctx.quadraticCurveTo(X(-0.84), Y(1.26), X(-1.02), Y(1.13));
+    ctx.lineTo(X(-1.25), Y(0.99));
   } else if (car.kit.shape === "four-door-coupe") {
     ctx.quadraticCurveTo(X(-0.52), Y(1.29), X(-0.92), Y(1.25));
     ctx.quadraticCurveTo(X(-1.3), Y(1.18), X(-1.68), Y(1.03));

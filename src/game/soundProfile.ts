@@ -6,6 +6,7 @@ export type EngineSampleId = "inline-turbo" | "v6-full-throttle" | "v-engine-col
 /** Levels/depths are normalized 0..1; frequencies are Hz and times seconds. */
 export interface SoundProfile {
   engineSample: EngineSampleId;
+  idleRpm: number;
   sampleBaseRpm: number;
   sampleLevel: number;
   firingFrequencyFactor: number;
@@ -64,8 +65,9 @@ export function soundProfile(build: Build): SoundProfile {
       : "inline-turbo";
   return {
     engineSample,
+    idleRpm: engine.idleRpm,
     sampleBaseRpm: engine.cylinders >= 8 ? 6000 : engine.cylinders === 6 ? 6500 : 5500,
-    sampleLevel: 0.62,
+    sampleLevel: unit(0.38 + engine.displacementL * 0.04 + (forced ? 0.12 : 0)),
     firingFrequencyFactor: engine.cylinders / 4,
     engineScale: unit(engine.displacementL / 4),
     intakeLevel: unit(intake.flowCapacity * 1.8), intakeHz: 150 + intake.flowCapacity * 380,
@@ -74,11 +76,12 @@ export function soundProfile(build: Build): SoundProfile {
     exhaustLevel: unit(0.34 + exh.flowCapacity), rasp: unit(exh.flowCapacity * 1.2 + exh.spoolAssist * 2),
     crackle: unit(exh.spoolAssist * 6), turbo: forced,
     whistleHz: forced ? 7800 / (1 + turbo.maximumFlow * 4) : 0,
-    whistleLevel: unit(turbo.maximumBoost * 0.25), flutter: unit(turbo.inertia * 0.45),
+    whistleLevel: forced ? unit(0.32 + turbo.maximumBoost * 0.24 + turbo.maximumFlow * 0.4) : 0,
+    flutter: unit(turbo.inertia * 0.45),
     bovHz: forced ? 6800 / (1 + turbo.maximumFlow * 5) : 0,
     bovDurationS: 0.12 + turbo.inertia * 0.13, bovLevel: unit(turbo.maximumFlow * 1.6),
     turboMuffling: forced ? unit(0.18 + turbo.inertia * 0.14) : 0,
-    pipeWhoosh: unit(ic.effectiveness * 0.15 + ic.pressureDrop + ic.sinkOffsetK * 0.002),
+    pipeWhoosh: unit(ic.effectiveness * 0.15 + ic.pressureDrop + ic.sinkOffsetK * 0.002 + turbo.maximumFlow * 0.35),
     injectorTick: unit((inj.flowCc - 200) / 1500),
     popSharpness: unit(0.45 + (fuel.octane - 95) * 0.035 - (14.7 - fuel.stoichAfr) * 0.1),
     attack: unit((pistons.compression - 7) / 5), pistonSlap: unit(pistons.frictionBar * 15),

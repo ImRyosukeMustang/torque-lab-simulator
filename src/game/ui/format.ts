@@ -7,6 +7,9 @@ const BODY_SHAPE_LABEL: Record<BodyPart["shape"], string> = {
   hatchback: "Hatchback",
   "light-coupe": "Lightweight coupe",
   "four-door-coupe": "Four-door GT coupe",
+  "executive-sedan": "Executive sedan",
+  "rotary-fastback": "Rotary fastback",
+  roadster: "Hardtop roadster",
 };
 
 /** Engineering specs shown for a part (no predicted horsepower: the dyno reveals that). */
